@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>eu.clarin.sru.fcs</groupId>
     <artifactId>fcs-simple-client</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
+    <version>1.3.0</version>
     <name>CLARIN-FCS client implementation</name>
     <description>A CLARIN-FCS client implementation supporting Legacy-FCS, FCS 1.0 and (partly) FCS 2.0</description>
     <organization>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>eu.clarin.sru</groupId>
             <artifactId>sru-client</artifactId>
-            <version>0.10.0-SNAPSHOT</version>
+            <version>1.8.0</version>
         </dependency>
     </dependencies>
 
@@ -146,4 +146,35 @@
         </pluginManagement>
     </build>
 
+    <repositories>
+        <repository>
+            <id>CLARIN</id>
+            <name>CLARIN Repository</name>
+            <url>https://nexus.clarin.eu/content/repositories/Clarin</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+
+        <repository>
+            <id>CLARIN-snapshot</id>
+            <name>CLARIN Snapshot Repository</name>
+            <url>https://nexus.clarin.eu/content/repositories/clarin-snapshot</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>CLARIN-snapshot</id>
+            <url>https://nexus.clarin.eu/content/repositories/clarin-snapshot</url>
+        </snapshotRepository>
+
+        <repository>
+            <id>CLARIN</id>
+            <url>https://nexus.clarin.eu/content/repositories/Clarin</url>
+        </repository>
+    </distributionManagement>
 </project>

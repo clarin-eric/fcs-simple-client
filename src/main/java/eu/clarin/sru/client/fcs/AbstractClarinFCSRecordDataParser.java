@@ -93,7 +93,9 @@ abstract class AbstractClarinFCSRecordDataParser implements SRURecordDataParser 
     }
 
 
-    protected SRURecordData parse(XMLStreamReader reader, String ns)
+    @SuppressWarnings("deprecation")
+    protected SRURecordData parse(XMLStreamReader reader, String ns,
+            boolean fullLegacyCompatMode)
             throws XMLStreamException, SRUClientException {
         // Resource
         XmlStreamReaderUtils.readStart(reader, ns, "Resource", true, true);
@@ -117,8 +119,13 @@ abstract class AbstractClarinFCSRecordDataParser implements SRURecordDataParser 
                 parseResourceFragments(reader, ns);
 
         XmlStreamReaderUtils.readEnd(reader, ns, "Resource", true);
-
-        return new ClarinFCSRecordData(pid, ref, dataviews, resourceFragments);
+        if (fullLegacyCompatMode) {
+            return new LegacyClarinFCSRecordData(pid, ref, dataviews,
+                    resourceFragments);
+        } else {
+            return new ClarinFCSRecordData(pid, ref, dataviews,
+                    resourceFragments);
+        }
     }
 
 

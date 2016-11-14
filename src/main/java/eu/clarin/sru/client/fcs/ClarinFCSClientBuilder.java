@@ -41,10 +41,11 @@ public class ClarinFCSClientBuilder {
     private List<SRUExtraResponseDataParser> extraDataParsers =
             new ArrayList<SRUExtraResponseDataParser>();
     private SRUVersion defaultVersion = DEFAULT_SRU_VERSION;
-    private boolean unknownAsDom      = DEFAULT_UNKNOWN_AS_DOM;
-    private boolean legacySupport     = false;
-    private int connectTimeout        = SRUClientConfig.DEFAULT_CONNECT_TIMEOUT;
-    private int socketTimeout         = SRUClientConfig.DEFAULT_SOCKET_TIMEOUT;
+    private boolean unknownAsDom = DEFAULT_UNKNOWN_AS_DOM;
+    private boolean legacySupport = false;
+    private boolean fullLegacyCompatMode = false;
+    private int connectTimeout = SRUClientConfig.DEFAULT_CONNECT_TIMEOUT;
+    private int socketTimeout = SRUClientConfig.DEFAULT_SOCKET_TIMEOUT;
 
 
     /**
@@ -142,6 +143,35 @@ public class ClarinFCSClientBuilder {
      */
     public ClarinFCSClientBuilder disableLegacySupport() {
         legacySupport = false;
+        return this;
+    }
+
+
+    /**
+     * Configure client to support legacy CLARIN-FCS endpoints in full
+     * compatibility mode. Automatically enables support for legacy CLARIN-FCS.
+     * <br>
+     * NB: This feature should not be used in production!
+     *
+     * @return this {@link ClarinFCSClientBuilder} instance
+     */
+    public ClarinFCSClientBuilder enableFullLegacyCompatMode() {
+        enableLegacySupport();
+        fullLegacyCompatMode = true;
+        return this;
+    }
+
+
+    /**
+     * Configure client to disable support for legacy CLARIN_FCS in full
+     * compatibility mode. <br>
+     * NB: Support for legacy CLARIN-FCS will <em>not</em> be disabled
+     * automatically!
+     *
+     * @return this {@link ClarinFCSClientBuilder} instance
+     */
+    public ClarinFCSClientBuilder disableFullLegacyCompatMode() {
+        fullLegacyCompatMode = false;
         return this;
     }
 
@@ -299,7 +329,7 @@ public class ClarinFCSClientBuilder {
         final List<DataViewParser> p = finalizeDataViewParsers();
         builder.addRecordDataParser(new ClarinFCSRecordDataParser(p));
         if (legacySupport) {
-            builder.addRecordDataParser(new LegacyClarinFCSRecordDataParser(p));
+            builder.addRecordDataParser(new LegacyClarinFCSRecordDataParser(p, fullLegacyCompatMode));
         }
         if ((extraDataParsers != null) && !extraDataParsers.isEmpty()) {
             for (SRUExtraResponseDataParser parser : extraDataParsers) {
@@ -322,7 +352,7 @@ public class ClarinFCSClientBuilder {
             result.add(new DataViewParserGenericString());
         }
         if (legacySupport) {
-            result.add(new DataViewParserKWIC());
+            result.add(new DataViewParserKWIC(fullLegacyCompatMode));
         }
         return result;
     }

@@ -62,7 +62,7 @@ public class ClarinFCSRecordDataParser extends
             throws XMLStreamException, SRUClientException {
         logger.debug("parsing CLARIN-FCS record");
 
-        return parse(reader, ClarinFCSRecordData.RECORD_SCHEMA);
+        return parse(reader, ClarinFCSRecordData.RECORD_SCHEMA, false);
     }
 
 } // class ClarinFCSRecordParser

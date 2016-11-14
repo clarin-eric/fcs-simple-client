@@ -56,8 +56,8 @@ class TestUtils {
 
     public static SRUExplainRequest makeExplainRequest(String baseURI) {
         SRUExplainRequest request = new SRUExplainRequest(baseURI);
-        request.setExtraRequestData("x-indent-response", "4");
-        request.setExtraRequestData("x-fcs-endpoint-description", "true");
+        request.setExtraRequestData(ClarinFCSConstants.X_INDENT_RESPONSE, "4");
+        request.setExtraRequestData(ClarinFCSConstants.X_FCS_ENDPOINT_DESCRIPTION, ClarinFCSConstants.TRUE);
         request.setParseRecordDataEnabled(true);
         return request;
     }
@@ -66,8 +66,8 @@ class TestUtils {
     public static SRUScanRequest makeScanRequest(String baseURI) {
         SRUScanRequest request = new SRUScanRequest(baseURI);
         request.setScanClause("fcs.resource = root");
-        request.setExtraRequestData("x-clarin-resource-info", "true");
-        request.setExtraRequestData("x-indent-response", "4");
+        request.setExtraRequestData(ClarinFCSConstants.X_INDENT_RESPONSE, "4");
+        request.setExtraRequestData(ClarinFCSConstants.LEGACY_X_CLARIN_RESOURCE_INFO, ClarinFCSConstants.TRUE);
         return request;
     }
 
@@ -82,7 +82,7 @@ class TestUtils {
         request.setMaximumRecords(5);
         request.setRecordXmlEscaping(SRURecordXmlEscaping.XML);
         request.setRecordPacking(SRURecordPacking.PACKED);
-        request.setExtraRequestData("x-indent-response", "4");
+        request.setExtraRequestData(ClarinFCSConstants.X_INDENT_RESPONSE, "4");
         return request;
     }
 

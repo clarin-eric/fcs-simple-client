@@ -34,8 +34,9 @@ import eu.clarin.sru.client.SRURecordData;
 @Deprecated
 public class LegacyClarinFCSRecordDataParser extends
         AbstractClarinFCSRecordDataParser {
+    private final boolean fullLegacyCompatMode;
 
-
+    
     /**
      * Constructor.
      *
@@ -44,29 +45,36 @@ public class LegacyClarinFCSRecordDataParser extends
      *            parser. This list should contain one
      *            {@link DataViewParserGenericDOM} or
      *            {@link DataViewParserGenericString} instance.
+     * @param fullLegacyCompatMode
+     *            enable full legacy CLARIN-FCS compat mode
      * @throws NullPointerException
      *             if parsers is <code>null</code>
      * @throws IllegalArgumentException
      *             if parsers is empty or contains duplicate entries
      */
-    public LegacyClarinFCSRecordDataParser(List<DataViewParser> parsers) {
+    public LegacyClarinFCSRecordDataParser(List<DataViewParser> parsers,
+            boolean fullLegacyCompatMode) {
         super(parsers);
+        this.fullLegacyCompatMode = fullLegacyCompatMode;
     }
 
 
     @Override
     public String getRecordSchema() {
-        return ClarinFCSRecordData.LEGACY_RECORD_SCHEMA;
+        return LegacyClarinFCSRecordData.RECORD_SCHEMA;
     }
 
 
     @Override
     public SRURecordData parse(XMLStreamReader reader)
             throws XMLStreamException, SRUClientException {
-        logger.warn("The endpoint supplied data in the deprecated CLARIN-FCS " +
-            "record data format. Please upgrade to the new CLARIN-FCS " +
-                "specification as soon as possible.");
-        return parse(reader, ClarinFCSRecordData.LEGACY_RECORD_SCHEMA);
+        if (!fullLegacyCompatMode) {
+            logger.warn("The endpoint supplied data in the deprecated " +
+                    "CLARIN-FCS record data format. Please upgrade to the " +
+                    "new CLARIN-FCS specification as soon as possible.");
+        }
+        return parse(reader, LegacyClarinFCSRecordData.RECORD_SCHEMA,
+                fullLegacyCompatMode);
     }
 
 } // class LegacyClarinFCSRecordDataParser

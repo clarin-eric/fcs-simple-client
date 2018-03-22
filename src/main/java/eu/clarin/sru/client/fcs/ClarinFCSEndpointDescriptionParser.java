@@ -54,7 +54,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     /**
      * constant for default parsing resource enumeration parsing depth
      */
-    public static final int DEFAULT_MAX_DEPTH  = INFINITE_MAX_DEPTH;
+    public static final int DEFAULT_MAX_DEPTH = INFINITE_MAX_DEPTH;
     private static final Logger logger =
             LoggerFactory.getLogger(ClarinFCSClientBuilder.class);
     private static final String ED_NS_URI =

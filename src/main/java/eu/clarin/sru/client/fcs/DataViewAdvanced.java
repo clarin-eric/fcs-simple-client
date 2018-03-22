@@ -110,7 +110,7 @@ public class DataViewAdvanced extends DataView {
         }
 
 
-        public URI getRefernce() {
+        public URI getReference() {
             return reference;
         }
     }
@@ -199,7 +199,7 @@ public class DataViewAdvanced extends DataView {
 
 
         public URI getReference() {
-            return segment.getRefernce();
+            return segment.getReference();
         }
     }
 

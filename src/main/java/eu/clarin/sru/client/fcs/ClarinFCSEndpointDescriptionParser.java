@@ -129,6 +129,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     capabilities = new ArrayList<URI>();
                 }
                 capabilities.add(uri);
+                logger.debug("parsed capability:{}", uri);
             } catch (URISyntaxException e) {
                 throw new XMLStreamException("Capabilities must be encoded " +
                         "as URIs (offending value = '" + s + "')",

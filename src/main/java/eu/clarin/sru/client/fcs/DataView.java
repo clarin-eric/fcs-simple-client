@@ -76,6 +76,7 @@ public abstract class DataView {
         return (this.type.equals(type));
     }
 
+
     /**
      * Get the persistent identifier for this DataView.
      *

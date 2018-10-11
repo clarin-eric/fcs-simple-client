@@ -202,6 +202,25 @@ public class ClarinFCSEndpointDescription implements Serializable,
 
 
         /**
+         * Convenience method to check if this DataView is of a certain MIME
+         * type.
+         *
+         * @param type
+         *            the MIME type to test against
+         * @return <code>true</code> if the DataView is in the supplied MIME
+         *         type, <code>false</code> otherwise
+         * @throws NullPointerException
+         *             if any required arguments are not supplied
+         */
+        public boolean isMimeType(String type) {
+            if (type == null) {
+                throw new NullPointerException("mimetype == null");
+            }
+            return (this.mimeType.equals(type));
+        }
+
+
+        /**
          * Get the delivery policy for this data view.
          *
          * @return the delivery policy of this data view

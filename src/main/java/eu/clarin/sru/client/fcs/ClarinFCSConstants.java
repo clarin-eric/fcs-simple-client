@@ -16,12 +16,15 @@
  */
 package eu.clarin.sru.client.fcs;
 
+import java.net.URI;
+
 import eu.clarin.sru.client.SRUClientConstants;
 
 public final class ClarinFCSConstants {
 
     /** constant for CQL query type */
     public static final String QUERY_TYPE_FCS = "fcs";
+
 
     /** constant for CQL query type */
     public static final String QUERY_TYPE_CQL =
@@ -32,6 +35,21 @@ public final class ClarinFCSConstants {
      */
     public static final String X_FCS_ENDPOINT_DESCRIPTION  =
             "x-fcs-endpoint-description";
+
+
+    /**
+     * constant for Basic Search capability
+     */
+    public static final URI CAPABILITY_BASIC_SEARCH =
+            URI.create("http://clarin.eu/fcs/capability/basic-search");
+
+
+    /**
+     * constant for Advanced Search capability
+     */
+    public static final URI CAPABILITY_ADVANCED_SEARCH =
+            URI.create("http://clarin.eu/fcs/capability/advanced-search");
+
 
     /**
      * constant for value "true" for extra request parameter

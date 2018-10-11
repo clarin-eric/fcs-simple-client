@@ -65,10 +65,6 @@ public class ClarinFCSEndpointDescriptionParser implements
     private static final int VERSION_2 = 2;
     private static final String CAPABILITY_PREFIX =
             "http://clarin.eu/fcs/capability/";
-    private static final URI CAPABILITY_BASIC_SEARCH =
-            URI.create("http://clarin.eu/fcs/capability/basic-search");
-    private static final URI CAPABILITY_ADVANCED_SEARCH =
-            URI.create("http://clarin.eu/fcs/capability/advanced-search");
     private static final String MIMETYPE_HITS_DATAVIEW =
             "application/x-clarin-fcs-hits+xml";
     private final int maxDepth;
@@ -146,14 +142,15 @@ public class ClarinFCSEndpointDescriptionParser implements
             throw new SRUClientException("Endpoint must support at " +
                     "least one capability!");
         }
-        final boolean hasBasicSearch =
-                (capabilities.indexOf(CAPABILITY_BASIC_SEARCH) != -1);
-        final boolean hasAdvancedSearch =
-                (capabilities.indexOf(CAPABILITY_ADVANCED_SEARCH) != -1);
+        final boolean hasBasicSearch = (capabilities
+                .indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
+        final boolean hasAdvancedSearch = (capabilities
+                .indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
         if (!hasBasicSearch) {
-            throw new SRUClientException("Endpoint must support " +
-                    "'basic-search' (" + CAPABILITY_BASIC_SEARCH +
-                    ") to conform to CLARIN-FCS specification");
+            throw new SRUClientException(
+                    "Endpoint must support " + "'basic-search' (" +
+                            ClarinFCSConstants.CAPABILITY_BASIC_SEARCH +
+                            ") to conform to CLARIN-FCS specification");
         }
 
         // SupportedDataViews
@@ -275,13 +272,16 @@ public class ClarinFCSEndpointDescriptionParser implements
             throw new SRUClientException("Endpoint must declare " +
                     "all supported layers (<SupportedLayers>) if they " +
                     "provide the 'advanced-search' (" +
-                    CAPABILITY_ADVANCED_SEARCH + ") capability");
+                    ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH +
+                    ") capability");
         }
         if (!hasAdvancedSearch && (supportedLayers != null)) {
             // XXX: hard error?!
             logger.warn("Endpoint superflously declared supported " +
                     "layers (<SupportedLayers> without providing the " +
-                    "'advanced-search' (" + CAPABILITY_ADVANCED_SEARCH + ") capability");
+                    "'advanced-search' (" +
+                    ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH +
+                    ") capability");
         }
 
         // Resources

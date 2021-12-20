@@ -287,7 +287,7 @@ public class ClarinFCSEndpointDescriptionParser implements
 
         // Resources
         final List<ResourceInfo> resources =
-                parseResources(reader, 0, maxDepth,
+                parseResources(reader, 0, maxDepth, hasAdvancedSearch,
                         supportedDataViews, supportedLayers);
 
         // skip over extensions
@@ -322,8 +322,9 @@ public class ClarinFCSEndpointDescriptionParser implements
 
 
     private static List<ResourceInfo> parseResources(XMLStreamReader reader,
-            int depth, int maxDepth, List<DataView> supportedDataviews,
-            List<Layer> supportedLayers) throws XMLStreamException {
+            int depth, int maxDepth, boolean hasAdvancedSearch,
+            List<DataView> supportedDataviews, List<Layer> supportedLayers)
+            throws XMLStreamException {
         List<ResourceInfo> resources = null;
 
         XmlStreamReaderUtils.readStart(reader, ED_NS_URI, "Resources", true);
@@ -333,7 +334,9 @@ public class ClarinFCSEndpointDescriptionParser implements
                     null, "pid", true);
             reader.next(); // consume start tag
 
-            logger.debug("pid = {}", pid);
+            logger.debug("hasAdvSearch: {}", hasAdvancedSearch);
+            
+            logger.debug("parsing resource with pid = {}", pid);
 
             final Map<String, String> title =
                     parseI18String(reader, "Title", true);
@@ -380,16 +383,18 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<DataView> dataviews = null;
             for (String dv : dvs.split("\\s+")) {
                 boolean found = false;
-                for (DataView dataview : supportedDataviews) {
-                    if (dataview.getIdentifier().equals(dv)) {
-                        found = true;
-                        if (dataviews == null) {
-                            dataviews = new ArrayList<DataView>();
+                if (supportedDataviews != null) {
+                    for (DataView dataview : supportedDataviews) {
+                        if (dataview.getIdentifier().equals(dv)) {
+                            found = true;
+                            if (dataviews == null) {
+                                dataviews = new ArrayList<DataView>();
+                            }
+                            dataviews.add(dataview);
+                            break;
                         }
-                        dataviews.add(dataview);
-                        break;
-                    }
-                } // for
+                    } // for
+                }
                 if (!found) {
                     throw new XMLStreamException("DataView with id '" + dv +
                             "' was not declared in <SupportedDataViews>",
@@ -409,16 +414,18 @@ public class ClarinFCSEndpointDescriptionParser implements
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "AvailableLayers");
                 for (String l : ls.split("\\s+")) {
                     boolean found = false;
-                    for (Layer layer : supportedLayers) {
-                        if (layer.getIdentifier().equals(l)) {
-                            found = true;
-                            if (layers == null) {
-                                layers = new ArrayList<Layer>();
+                    if (supportedLayers != null) {
+                        for (Layer layer : supportedLayers) {
+                            if (layer.getIdentifier().equals(l)) {
+                                found = true;
+                                if (layers == null) {
+                                    layers = new ArrayList<Layer>();
+                                }
+                                layers.add(layer);
+                                break;
                             }
-                            layers.add(layer);
-                            break;
-                        }
-                    } // for
+                        } // for
+                    }
                     if (!found) {
                         throw new XMLStreamException("Layer with id '" + l +
                                 "' was not declared in <SupportedLayers>",
@@ -426,6 +433,14 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 } // for
                 logger.debug("Layers: {}", layers);
+            } // for
+            if (hasAdvancedSearch && (layers == null)) {
+                throw new XMLStreamException("Endpoint must declare " +
+                        "all available layers (<AvailableLayers>) on a " +
+                        "resource, if they provide the 'advanced-search' (" +
+                        ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH +
+                        ") capability. Offending resource id pid=" + pid +
+                        ")", reader.getLocation());
             }
 
 
@@ -436,7 +451,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                 if ((maxDepth == INFINITE_MAX_DEPTH) ||
                         (nextDepth < maxDepth)) {
                     subResources = parseResources(reader, nextDepth,
-                            maxDepth, supportedDataviews, supportedLayers);
+                            maxDepth, hasAdvancedSearch, supportedDataviews,
+                            supportedLayers);
                 } else {
                     XmlStreamReaderUtils.skipTag(reader, ED_NS_URI,
                             "Resources", true);

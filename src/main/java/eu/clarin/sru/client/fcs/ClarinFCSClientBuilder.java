@@ -19,6 +19,7 @@ package eu.clarin.sru.client.fcs;
 import java.util.ArrayList;
 import java.util.List;
 
+import eu.clarin.sru.client.SRURequestAuthenticator;
 import eu.clarin.sru.client.SRUClient;
 import eu.clarin.sru.client.SRUClientConfig;
 import eu.clarin.sru.client.SRUExtraResponseDataParser;
@@ -46,7 +47,8 @@ public class ClarinFCSClientBuilder {
     private boolean fullLegacyCompatMode = false;
     private int connectTimeout = SRUClientConfig.DEFAULT_CONNECT_TIMEOUT;
     private int socketTimeout = SRUClientConfig.DEFAULT_SOCKET_TIMEOUT;
-
+    private SRURequestAuthenticator requestAuthStrategy;
+    
 
     /**
      * Constructor.
@@ -239,6 +241,13 @@ public class ClarinFCSClientBuilder {
     }
 
 
+    public ClarinFCSClientBuilder setRequestAuthenticator(
+            SRURequestAuthenticator requestAuthStrategy) {
+        this.requestAuthStrategy = requestAuthStrategy;
+        return this;
+    }
+
+
     /**
      * Register a Data View parser.
      *
@@ -325,7 +334,8 @@ public class ClarinFCSClientBuilder {
         builder
             .setDefaultVersion(defaultVersion)
             .setConnectTimeout(connectTimeout)
-            .setSocketTimeout(socketTimeout);
+            .setSocketTimeout(socketTimeout)
+            .setRequestAuthenticator(requestAuthStrategy);
         final List<DataViewParser> p = finalizeDataViewParsers();
         builder.addRecordDataParser(new ClarinFCSRecordDataParser(p));
         if (legacySupport) {

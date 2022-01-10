@@ -1,5 +1,5 @@
 /* This software is copyright (c) 2012-2021 by
- *  - Institut fuer Deutsche Sprache (http://www.ids-mannheim.de)
+ *  - Leibniz-Institut fuer Deutsche Sprache (http://www.ids-mannheim.de)
  * This is free software. You can redistribute it
  * and/or modify it under the terms described in
  * the GNU General Public License v3 of which you

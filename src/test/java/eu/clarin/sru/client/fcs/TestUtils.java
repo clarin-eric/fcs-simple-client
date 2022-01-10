@@ -25,6 +25,8 @@ import org.w3c.dom.Node;
 
 import eu.clarin.sru.client.SRUDiagnostic;
 import eu.clarin.sru.client.SRUExplainRecordData;
+import eu.clarin.sru.client.SRUExplainRecordData.ConfigInfo;
+import eu.clarin.sru.client.SRUExplainRecordData.Schema;
 import eu.clarin.sru.client.SRUExplainRequest;
 import eu.clarin.sru.client.SRUExplainResponse;
 import eu.clarin.sru.client.SRUExtraResponseData;
@@ -38,17 +40,7 @@ import eu.clarin.sru.client.SRUSearchRetrieveRequest;
 import eu.clarin.sru.client.SRUSearchRetrieveResponse;
 import eu.clarin.sru.client.SRUSurrogateRecordData;
 import eu.clarin.sru.client.SRUTerm;
-import eu.clarin.sru.client.SRUExplainRecordData.ConfigInfo;
-import eu.clarin.sru.client.SRUExplainRecordData.Schema;
-import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ResourceInfo;
-import eu.clarin.sru.client.fcs.ClarinFCSRecordData;
-import eu.clarin.sru.client.fcs.DataView;
-import eu.clarin.sru.client.fcs.DataViewAdvanced;
-import eu.clarin.sru.client.fcs.DataViewGenericDOM;
-import eu.clarin.sru.client.fcs.DataViewGenericString;
-import eu.clarin.sru.client.fcs.DataViewHits;
-import eu.clarin.sru.client.fcs.Resource;
 
 class TestUtils {
     private static final Logger logger =

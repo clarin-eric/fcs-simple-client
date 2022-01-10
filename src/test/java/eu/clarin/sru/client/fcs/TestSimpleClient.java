@@ -31,8 +31,6 @@ import eu.clarin.sru.client.SRUScanRequest;
 import eu.clarin.sru.client.SRUSearchRetrieveRequest;
 import eu.clarin.sru.client.SRUSimpleClient;
 import eu.clarin.sru.client.SRUWhereInList;
-import eu.clarin.sru.client.fcs.ClarinFCSClientBuilder;
-import eu.clarin.sru.client.fcs.ClarinFCSRecordData;
 
 
 public class TestSimpleClient {

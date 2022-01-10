@@ -36,7 +36,7 @@ public class LegacyClarinFCSRecordDataParser extends
         AbstractClarinFCSRecordDataParser {
     private final boolean fullLegacyCompatMode;
 
-    
+
     /**
      * Constructor.
      *

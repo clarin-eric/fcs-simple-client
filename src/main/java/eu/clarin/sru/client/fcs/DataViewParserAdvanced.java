@@ -71,8 +71,7 @@ public final class DataViewParserAdvanced implements DataViewParser {
         reader.next(); // skip start tag
 
         // Segments
-        final Map<String, DataViewAdvanced.Segment> segments =
-                new HashMap<String, DataViewAdvanced.Segment>();
+        final Map<String, DataViewAdvanced.Segment> segments = new HashMap<>();
         XmlStreamReaderUtils.readStart(reader, FCS_ADV_NS, "Segments", true);
         while (XmlStreamReaderUtils.readStart(reader, FCS_ADV_NS, "Segment",
                 segments.isEmpty(), true)) {
@@ -97,7 +96,7 @@ public final class DataViewParserAdvanced implements DataViewParser {
 
         // Layers
         List<DataViewAdvanced.Layer> layers =
-                new ArrayList<DataViewAdvanced.Layer>();
+                new ArrayList<>();
 
         XmlStreamReaderUtils.readStart(reader, FCS_ADV_NS, "Layers", true);
         while (XmlStreamReaderUtils.readStart(reader, FCS_ADV_NS, "Layer",
@@ -107,7 +106,7 @@ public final class DataViewParserAdvanced implements DataViewParser {
             logger.debug("layer: id={}", id);
 
             final List<DataViewAdvanced.Span> spans =
-                    new ArrayList<DataViewAdvanced.Span>();
+                    new ArrayList<>();
             while (XmlStreamReaderUtils.readStart(reader, FCS_ADV_NS, "Span",
                     spans.isEmpty(), true)) {
                 String segment_ref = XmlStreamReaderUtils.readAttributeValue(reader, null, "ref");

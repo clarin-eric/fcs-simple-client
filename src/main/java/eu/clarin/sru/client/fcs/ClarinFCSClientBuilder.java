@@ -19,10 +19,10 @@ package eu.clarin.sru.client.fcs;
 import java.util.ArrayList;
 import java.util.List;
 
-import eu.clarin.sru.client.SRURequestAuthenticator;
 import eu.clarin.sru.client.SRUClient;
 import eu.clarin.sru.client.SRUClientConfig;
 import eu.clarin.sru.client.SRUExtraResponseDataParser;
+import eu.clarin.sru.client.SRURequestAuthenticator;
 import eu.clarin.sru.client.SRUSimpleClient;
 import eu.clarin.sru.client.SRUThreadedClient;
 import eu.clarin.sru.client.SRUVersion;
@@ -38,9 +38,9 @@ public class ClarinFCSClientBuilder {
             false;
     private static final SRUVersion DEFAULT_SRU_VERSION =
             SRUVersion.VERSION_1_2;
-    private List<DataViewParser> parsers = new ArrayList<DataViewParser>();
+    private List<DataViewParser> parsers = new ArrayList<>();
     private List<SRUExtraResponseDataParser> extraDataParsers =
-            new ArrayList<SRUExtraResponseDataParser>();
+            new ArrayList<>();
     private SRUVersion defaultVersion = DEFAULT_SRU_VERSION;
     private boolean unknownAsDom = DEFAULT_UNKNOWN_AS_DOM;
     private boolean legacySupport = false;
@@ -48,7 +48,7 @@ public class ClarinFCSClientBuilder {
     private int connectTimeout = SRUClientConfig.DEFAULT_CONNECT_TIMEOUT;
     private int socketTimeout = SRUClientConfig.DEFAULT_SOCKET_TIMEOUT;
     private SRURequestAuthenticator requestAuthStrategy;
-    
+
 
     /**
      * Constructor.
@@ -353,7 +353,7 @@ public class ClarinFCSClientBuilder {
     @SuppressWarnings("deprecation")
     private List<DataViewParser> finalizeDataViewParsers() {
         final List<DataViewParser> result =
-                new ArrayList<DataViewParser>(parsers.size() +
+                new ArrayList<>(parsers.size() +
                         (legacySupport ? 2 : 1));
         result.addAll(parsers);
         if (unknownAsDom) {

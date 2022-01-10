@@ -17,6 +17,7 @@
 package eu.clarin.sru.client.fcs;
 
 import java.io.StringWriter;
+
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;

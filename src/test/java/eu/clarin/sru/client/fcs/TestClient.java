@@ -28,8 +28,6 @@ import eu.clarin.sru.client.SRUScanResponse;
 import eu.clarin.sru.client.SRUSearchRetrieveRequest;
 import eu.clarin.sru.client.SRUSearchRetrieveResponse;
 import eu.clarin.sru.client.SRUVersion;
-import eu.clarin.sru.client.fcs.ClarinFCSClientBuilder;
-import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescriptionParser;
 
 
 public class TestClient {

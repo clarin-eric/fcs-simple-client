@@ -126,7 +126,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                 }
                 final URI uri = new URI(s);
                 if (capabilities == null) {
-                    capabilities = new ArrayList<URI>();
+                    capabilities = new ArrayList<>();
                 }
                 capabilities.add(uri);
                 logger.debug("parsed capability:{}", uri);
@@ -188,7 +188,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 }
             } else {
-                supportedDataViews = new ArrayList<DataView>();
+                supportedDataViews = new ArrayList<>();
             }
             supportedDataViews.add(new DataView(id, type, policy));
             XmlStreamReaderUtils.readEnd(reader,
@@ -260,7 +260,7 @@ public class ClarinFCSEndpointDescriptionParser implements
 
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "SupportedLayer");
                 if (supportedLayers == null) {
-                    supportedLayers = new ArrayList<Layer>();
+                    supportedLayers = new ArrayList<>();
                 }
                 supportedLayers.add(new Layer(id, resultId, layer,
                         encoding, qualifier, altValueInfo,
@@ -335,7 +335,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             reader.next(); // consume start tag
 
             logger.debug("hasAdvSearch: {}", hasAdvancedSearch);
-            
+
             logger.debug("parsing resource with pid = {}", pid);
 
             final Map<String, String> title =
@@ -360,7 +360,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                         XmlStreamReaderUtils.readString(reader, true);
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Language");
                 if (languages == null) {
-                    languages = new ArrayList<String>();
+                    languages = new ArrayList<>();
                 } else {
                     for (String l : languages) {
                         if (l.equals(language)) {
@@ -388,7 +388,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                         if (dataview.getIdentifier().equals(dv)) {
                             found = true;
                             if (dataviews == null) {
-                                dataviews = new ArrayList<DataView>();
+                                dataviews = new ArrayList<>();
                             }
                             dataviews.add(dataview);
                             break;
@@ -419,7 +419,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                             if (layer.getIdentifier().equals(l)) {
                                 found = true;
                                 if (layers == null) {
-                                    layers = new ArrayList<Layer>();
+                                    layers = new ArrayList<>();
                                 }
                                 layers.add(layer);
                                 break;
@@ -474,7 +474,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resource");
 
             if (resources == null) {
-                resources = new ArrayList<ResourceInfo>();
+                resources = new ArrayList<>();
             }
             resources.add(new ResourceInfo(pid, title, description,
                     landingPageURI, languages, dataviews, layers,
@@ -496,7 +496,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             reader.next(); // skip start tag
             final String content = XmlStreamReaderUtils.readString(reader, true);
             if (result == null) {
-                result = new HashMap<String, String>();
+                result = new HashMap<>();
             }
             if (result.containsKey(lang)) {
                 throw new XMLStreamException("language '" + lang +

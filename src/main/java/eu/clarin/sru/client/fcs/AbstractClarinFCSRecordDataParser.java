@@ -63,7 +63,7 @@ abstract class AbstractClarinFCSRecordDataParser implements SRURecordDataParser 
             throw new IllegalArgumentException("parsers is empty");
         }
 
-        ArrayList<DataViewParser> list = new ArrayList<DataViewParser>();
+        ArrayList<DataViewParser> list = new ArrayList<>();
         boolean foundGeneric = false;
         for (DataViewParser parser : parsers) {
             if ((parser instanceof DataViewParserGenericDOM) ||
@@ -171,7 +171,7 @@ abstract class AbstractClarinFCSRecordDataParser implements SRURecordDataParser 
 
             if (dataview != null) {
                 if (dataviews == null) {
-                    dataviews = new LinkedList<DataView>();
+                    dataviews = new LinkedList<>();
                 }
                 dataviews.add(dataview);
             } else {
@@ -195,7 +195,7 @@ abstract class AbstractClarinFCSRecordDataParser implements SRURecordDataParser 
             XmlStreamReaderUtils.readEnd(reader, ns, "ResourceFragment", true);
 
             if (resourceFragments == null) {
-                resourceFragments = new LinkedList<Resource.ResourceFragment>();
+                resourceFragments = new LinkedList<>();
             }
             resourceFragments.add(new Resource.ResourceFragment(pid, ref, dataviews));
         } // while

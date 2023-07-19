@@ -215,6 +215,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.3.1</version>
+                <configuration>
+                    <links>
+                        <link>https://clarin-eric.github.io/fcs-sru-client/apidocs/</link>
+                    </links>
+                </configuration>
             </plugin>
         </plugins>
     </reporting>

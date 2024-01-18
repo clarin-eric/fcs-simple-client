@@ -513,6 +513,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             String pid = null;
             Map<String, String> titles = null;
             Map<String, String> descrs = null;
+            Map<String, String> insts = null;
             String link = null;
             List<String> langs = null;
             List<DataView> availableDataViews = null;
@@ -592,6 +593,36 @@ public class ClarinFCSEndpointDescriptionParser implements
                 }
                 if ((descrs != null) && !descrs.containsKey(LANG_EN)) {
                     throw new SRUClientException("A <Description> with language 'en' is mandatory");
+                }
+            }
+
+            exp = xpath.compile("ed:Institution");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n = (Element) list.item(i);
+
+                    String lang = getLangAttribute(n);
+                    if (lang == null) {
+                        throw new SRUClientException("Element <Institution> " +
+                                "must have a proper 'xml:lang' attribute");
+
+                    }
+                    String inst = cleanString(n.getTextContent());
+
+                    if (insts == null) {
+                        insts = new HashMap<>();
+                    }
+
+                    if (insts.containsKey(lang)) {
+                        logger.debug("institution with language '{}' " +
+                                "already exists", lang);
+                    } else {
+                        insts.put(lang, inst);
+                    }
+                }
+                if ((insts != null) && !insts.containsKey(LANG_EN)) {
+                    throw new SRUClientException("A <Institution> with language 'en' is mandatory");
                 }
             }
 
@@ -732,7 +763,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                         "includes information about <AvailableLayers> for " +
                         "resource with pid '{}'", pid);
             }
-            ris.add(new ResourceInfo(pid, titles, descrs, link, langs,
+            ris.add(new ResourceInfo(pid, titles, descrs, insts, link, langs,
                     availableDataViews, availableLayers, sub));
         }
 
@@ -1028,6 +1059,9 @@ public class ClarinFCSEndpointDescriptionParser implements
             final Map<String, String> description = parseI18String(reader, "Description", false);
             logger.debug("description: {}", description);
 
+            final Map<String, String> institution = parseI18String(reader, "Institution", false);
+            logger.debug("institution: {}", institution);
+
             final String landingPageURI = XmlStreamReaderUtils.readContent(reader, ED_NS_URI,
                     "LandingPageURI", false);
             logger.debug("landingPageURI: {}", landingPageURI);
@@ -1155,9 +1189,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             if (resources == null) {
                 resources = new ArrayList<>();
             }
-            resources.add(new ResourceInfo(pid, title, description,
-                    landingPageURI, languages, dataviews, layers,
-                    subResources));
+            resources.add(new ResourceInfo(pid, title, description, institution,
+                    landingPageURI, languages, dataviews, layers, subResources));
         } // while
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resources");
 

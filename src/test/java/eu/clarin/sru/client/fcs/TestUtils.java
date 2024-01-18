@@ -273,6 +273,10 @@ class TestUtils {
                 logger.info("{}    description: {}",
                         indent, ri.getDescription());
             }
+            if (ri.getInstitution() != null) {
+                logger.info("{}    institution: {}",
+                        indent, ri.getInstitution());
+            }
             if (ri.getLandingPageURI() != null) {
                 logger.info("{}    landingPageURI: {}",
                         indent, ri.getLandingPageURI());

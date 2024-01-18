@@ -410,6 +410,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final String pid;
         private final Map<String, String> title;
         private final Map<String, String> description;
+        private final Map<String, String> institution;
         private final String landingPageURI;
         private final List<String> languages;
         private final List<DataView> availableDataViews;
@@ -421,7 +422,9 @@ public class ClarinFCSEndpointDescription implements Serializable,
          * Constructor. <em>Internal use only!</em>
          */
         ResourceInfo(String pid, Map<String, String> title,
-                Map<String, String> description, String landingPageURI,
+                Map<String, String> description,
+                Map<String, String> institution,
+                String landingPageURI,
                 List<String> languages, List<DataView> availableDataViews,
                 List<Layer> availableLayers,
                 List<ResourceInfo> subResources) {
@@ -441,6 +444,11 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 this.description = Collections.unmodifiableMap(description);
             } else {
                 this.description = null;
+            }
+            if ((institution != null) && !institution.isEmpty()) {
+                this.institution = Collections.unmodifiableMap(institution);
+            } else {
+                this.institution = null;
             }
 
             this.landingPageURI = landingPageURI;
@@ -537,6 +545,35 @@ public class ClarinFCSEndpointDescription implements Serializable,
          */
         public String getDescription(String language) {
             return (description != null) ? description.get(language) : null;
+        }
+
+
+        /**
+         * Get the institution of this resource.
+         * 
+         * This is an optional attribute for endpoints that host resources from
+         * different institution but still want to bundle them in one endpoint.
+         * If not specified then it is the default institution that hosts the
+         * FCS endpoint.
+         *
+         * @return the institution of this resource or <code>null</code> if not
+         *         applicable or specified
+         */
+        public Map<String, String> getInstitution() {
+            return institution;
+        }
+
+
+        /**
+         * Get the institution of this resource for a specific language code.
+         *
+         * @param language
+         *            the language code
+         * @return the institution of this resource or <code>null</code> if not
+         *         applicable or specified
+         */
+        public String getInstitution(String language) {
+            return (institution != null) ? institution.get(language) : null;
         }
 
 

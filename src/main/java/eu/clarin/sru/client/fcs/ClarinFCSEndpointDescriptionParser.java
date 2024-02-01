@@ -20,16 +20,29 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.XMLConstants;
+import javax.xml.namespace.NamespaceContext;
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import eu.clarin.sru.client.SRUClientException;
 import eu.clarin.sru.client.SRUExtraResponseData;
@@ -55,27 +68,63 @@ public class ClarinFCSEndpointDescriptionParser implements
      * constant for default parsing resource enumeration parsing depth
      */
     public static final int DEFAULT_MAX_DEPTH = INFINITE_MAX_DEPTH;
-    private static final Logger logger =
-            LoggerFactory.getLogger(ClarinFCSClientBuilder.class);
-    private static final String ED_NS_URI =
-            "http://clarin.eu/fcs/endpoint-description";
-    private static final QName ED_ROOT_ELEMENT =
-            new QName(ED_NS_URI, "EndpointDescription");
+    /**
+     * constant for default parsing method (event based streaming, or in-memory XML DOM)
+     */
+    public static final boolean DEFAULT_PARSING_STREAMING = false;
+
+    private static final Logger logger = LoggerFactory.getLogger(ClarinFCSClientBuilder.class);
+    private static final String ED_NS_URI = "http://clarin.eu/fcs/endpoint-description";
+    private static final QName ED_ROOT_ELEMENT = new QName(ED_NS_URI, "EndpointDescription");
     private static final int VERSION_1 = 1;
     private static final int VERSION_2 = 2;
-    private static final String CAPABILITY_PREFIX =
-            "http://clarin.eu/fcs/capability/";
-    private static final String MIMETYPE_HITS_DATAVIEW =
-            "application/x-clarin-fcs-hits+xml";
+    private static final String CAPABILITY_PREFIX = "http://clarin.eu/fcs/capability/";
+    private static final String MIMETYPE_HITS_DATAVIEW = "application/x-clarin-fcs-hits+xml";
+    private static final String MIMETYPE_ADV_DATAVIEW = "application/x-clarin-fcs-adv+xml";
+    private static final String LANG_EN = "en";
+    private static final String POLICY_SEND_DEFAULT = "send-by-default";
+    private static final String POLICY_NEED_REQUEST = "need-to-request";
+    private static final String LAYER_ENCODING_VALUE = "value";
+    private static final String LAYER_ENCODING_EMPTY = "empty";
+
     private final int maxDepth;
+    private final boolean streaming;
+
+    /**
+     * Constructor. By default, the parser will parse the endpoint resource
+     * enumeration to an infinite depth. It will also parse the XML using an
+     * in-memory DOM with XPaths.
+     */
+    public ClarinFCSEndpointDescriptionParser() {
+        this(DEFAULT_MAX_DEPTH, DEFAULT_PARSING_STREAMING);
+    }
+
+
+    /**
+     * Constructor. By default, the parser will use in-memory DOM with XPaths.
+     *
+     * @param maxDepth
+     *            maximum depth for parsing the endpoint resource enumeration.
+     * @throws IllegalArgumentException
+     *             if an argument is illegal
+     */
+    public ClarinFCSEndpointDescriptionParser(int maxDepth) {
+        this(maxDepth, DEFAULT_PARSING_STREAMING);
+    }
 
 
     /**
      * Constructor. By default, the parser will parse the endpoint resource
      * enumeration to an infinite depth.
+     *
+     * @param streaming
+     *            parse SRU extra response data in streaming manner instead of
+     *            in-memory DOM using XPaths.
+     * @throws IllegalArgumentException
+     *             if an argument is illegal
      */
-    public ClarinFCSEndpointDescriptionParser() {
-        this(DEFAULT_MAX_DEPTH);
+    public ClarinFCSEndpointDescriptionParser(boolean streaming) {
+        this(DEFAULT_MAX_DEPTH, streaming);
     }
 
 
@@ -84,16 +133,19 @@ public class ClarinFCSEndpointDescriptionParser implements
      *
      * @param maxDepth
      *            maximum depth for parsing the endpoint resource enumeration.
+     * @param streaming
+     *            parse SRU extra response data in streaming manner instead of
+     *            in-memory DOM using XPaths.
      * @throws IllegalArgumentException
      *             if an argument is illegal
      */
-    public ClarinFCSEndpointDescriptionParser(int maxDepth) {
+    public ClarinFCSEndpointDescriptionParser(int maxDepth, boolean streaming) {
         if (maxDepth < -1) {
             throw new IllegalArgumentException("maxDepth < -1");
         }
         this.maxDepth = maxDepth;
+        this.streaming = streaming;
     }
-
 
     @Override
     public boolean supports(QName name) {
@@ -103,6 +155,641 @@ public class ClarinFCSEndpointDescriptionParser implements
 
     @Override
     public SRUExtraResponseData parse(XMLStreamReader reader)
+            throws XMLStreamException, SRUClientException {
+        if (streaming) {
+            return parseEndpointDescription(reader, maxDepth);
+        } else {
+            logger.debug("parsing with xpath");
+            final Document erdDoc = XmlStreamReaderUtils.parseToDocument(reader);
+            try {
+                return parseEndpointDescription(erdDoc, maxDepth);
+            } catch (XPathExpressionException e) {
+                throw new SRUClientException("internal error", e);
+            }
+        }
+    }
+
+
+    // -----------------------------------------------------------------------
+
+    private static ClarinFCSEndpointDescription parseEndpointDescription(Document doc, int maxDepth)
+        throws SRUClientException, XPathExpressionException {
+        XPathFactory factory = XPathFactory.newInstance();
+        XPath xpath = factory.newXPath();
+
+        xpath.setNamespaceContext(new NamespaceContext() {
+            @Override
+            public Iterator<String> getPrefixes(String namespaceURI) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String getPrefix(String namespaceURI) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String getNamespaceURI(String prefix) {
+                if (prefix == null) {
+                    throw new NullPointerException("prefix == null");
+                }
+                if (prefix.equals("ed")) {
+                    return ED_NS_URI;
+                } else if (prefix.equals(XMLConstants.XML_NS_PREFIX)) {
+                    return XMLConstants.XML_NS_URI;
+                } else {
+                    return XMLConstants.NULL_NS_URI;
+                }
+            }
+        });
+
+        // version
+        int version = -1;
+        XPathExpression exp = xpath.compile("//ed:EndpointDescription/@version");
+        String v = (String) exp.evaluate(doc, XPathConstants.STRING);
+        if (v != null) {
+            try {
+                version = Integer.parseInt(v);
+                if ((version != 1) && (version != 2)) {
+                    throw new SRUClientException("Attribute @version element "
+                            + "<EndpointDescription> must have a value of either '1' or '2' ");
+                }
+            } catch (NumberFormatException e) {
+                throw new SRUClientException("Cannot parse version number", e);
+            }
+        }
+        if (version == -1) {
+            throw new SRUClientException("Attribute @version missing on element <EndpointDescription>");
+        }
+
+        // capabilities
+        List<URI> capabilities = parseCapabilities(xpath, doc, version);
+        final boolean hasBasicSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
+        final boolean hasAdvancedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+
+        // used to check for uniqueness of id attribute
+        final Set<String> xml_ids = new HashSet<>();
+
+        // SupportedDataViews
+        List<DataView> supportedDataViews = parseSupportedDataViews(xpath, doc, capabilities, xml_ids);
+
+        // SupportedLayers
+        List<Layer> supportedLayers = parseSupportedLayers(xpath, doc, capabilities, xml_ids);
+
+        // Resources
+        exp = xpath.compile("/ed:EndpointDescription/ed:Resources/ed:Resource");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        final Set<String> pids = new HashSet<>();
+        List<ResourceInfo> resources = parseResources(xpath, list, 0, maxDepth, pids,
+                supportedDataViews, supportedLayers, version, hasAdvancedSearch);
+        if ((resources == null) || resources.isEmpty()) {
+            throw new SRUClientException("No resources where defined in endpoint description");
+        }
+
+        return new ClarinFCSEndpointDescription(version, capabilities,
+                supportedDataViews, supportedLayers, resources);
+    }
+
+
+    private static List<URI> parseCapabilities(XPath xpath, Document doc, int version)
+            throws SRUClientException, XPathExpressionException {
+        List<URI> capabilities = new ArrayList<>();
+        XPathExpression exp = xpath.compile("//ed:Capabilities/ed:Capability");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            for (int i = 0; i < list.getLength(); i++) {
+                String s = list.item(i).getTextContent().trim();
+                try {
+                    URI uri = new URI(s);
+                    if (!capabilities.contains(uri)) {
+                        capabilities.add(uri);
+                    } else {
+                        logger.debug("ignoring duplicate capability entry for '{}'", uri);
+                    }
+                } catch (URISyntaxException e) {
+                    throw new SRUClientException("capability is not encoded as a proper URI: " + s);
+                }
+            }
+        }
+        final boolean hasBasicSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
+        final boolean hasAdvancedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        if (!hasBasicSearch) {
+            throw new SRUClientException("Endpoint must support 'basic-search' (" +
+                    ClarinFCSConstants.CAPABILITY_BASIC_SEARCH +
+                    ") to conform to CLARIN-FCS specification");
+        }
+        if (hasAdvancedSearch && (version < 2)) {
+            logger.warn("Endpoint description is declared as version " +
+                    "FCS 1.0 (@version = 1), but contains support for " +
+                    "Advanced Search in capabilities list! FCS 1.0 only " +
+                    "supports Basic Search");
+        }
+
+        return capabilities;
+    }
+
+
+    private static List<DataView> parseSupportedDataViews(XPath xpath, Document doc,
+            List<URI> capabilities, Set<String> xml_ids)
+            throws SRUClientException, XPathExpressionException {
+        List<DataView> supportedDataViews = new ArrayList<>();
+        XPathExpression exp = xpath.compile("//ed:SupportedDataViews/ed:SupportedDataView");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            for (int i = 0; i < list.getLength(); i++) {
+                Element item = (Element) list.item(i);
+                String id = getAttribute(item, "id");
+                if (id == null) {
+                    throw new SRUClientException("Element <SupportedDataView> "
+                            + "must have a proper 'id' attribute");
+                }
+                if ((id.indexOf(' ') != -1) || (id.indexOf(',') != -1) ||
+                        (id.indexOf(';') != -1)) {
+                    throw new SRUClientException("Value of attribute 'id' on " +
+                            "element '<SupportedDataView>' may not contain the " +
+                            "characters ',' (comma) or ';' (semicolon) " +
+                            "or ' ' (space)");
+                }
+
+                if (xml_ids.contains(id)) {
+                    throw new SRUClientException("The value of attribute " +
+                            "'id' of element <SupportedDataView> must be " +
+                            "unique: " + id);
+                }
+                xml_ids.add(id);
+
+                String p = getAttribute(item, "delivery-policy");
+                if (p == null) {
+                    throw new SRUClientException("Element <SupportedDataView> "
+                            + "must have a 'delivery-policy' attribute");
+                }
+                DeliveryPolicy policy = null;
+                if (POLICY_SEND_DEFAULT.equals(p)) {
+                    policy = DeliveryPolicy.SEND_BY_DEFAULT;
+                } else if (POLICY_NEED_REQUEST.equals(p)) {
+                    policy = DeliveryPolicy.NEED_TO_REQUEST;
+                } else {
+                    throw new SRUClientException("Invalid value '" + p +
+                            "' for attribute 'delivery-policy' on element " +
+                            "<SupportedDataView>");
+                }
+                String mimeType = item.getTextContent();
+                if (mimeType != null) {
+                    mimeType = mimeType.trim();
+                    if (mimeType.isEmpty()) {
+                        mimeType = null;
+                    }
+                }
+                if (mimeType == null) {
+                    throw new SRUClientException("Element <SupportedDataView> " +
+                            "must contain a MIME-type as content");
+                }
+                // check for duplicate entries ...
+                for (DataView dataView : supportedDataViews) {
+                    if (id.equals(dataView.getIdentifier())) {
+                        throw new SRUClientException("A <SupportedDataView> with " +
+                                "the id '" + id + "' is already defined!");
+                    }
+                    if (mimeType.equals(dataView.getMimeType())) {
+                        throw new SRUClientException("A <SupportedDataView> with " +
+                                "the MIME-type '" + mimeType + "' is already defined!");
+                    }
+                }
+                supportedDataViews.add(new DataView(id, mimeType, policy));
+            }
+        } else {
+            throw new SRUClientException("Endpoint configuration contains " +
+                    "no valid information about supported data views");
+        }
+
+        boolean hasHitsView = false;
+        boolean hasAdvView = false;
+        if (supportedDataViews != null) {
+            for (DataView dataView : supportedDataViews) {
+                if (MIMETYPE_HITS_DATAVIEW.equals(dataView.getMimeType())) {
+                    hasHitsView = true;
+                } else if (MIMETYPE_ADV_DATAVIEW.equals(dataView.getMimeType())) {
+                    hasAdvView = true;
+                }
+            }
+        }
+        if (!hasHitsView) {
+            throw new SRUClientException("Endpoint must support " +
+                    "generic hits dataview (expected MIME type '" +
+                    MIMETYPE_HITS_DATAVIEW +
+                    "') to conform to CLARIN-FCS specification");
+        }
+        if (capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) && !hasAdvView) {
+            throw new SRUClientException("Endpoint claimes to support " +
+                    "Advanced FCS but does not declare Advanced Data View (" +
+                    MIMETYPE_ADV_DATAVIEW + ") in <SupportedDataViews>");
+        }
+
+        return supportedDataViews;
+    }
+
+
+    private static List<Layer> parseSupportedLayers(XPath xpath, Document doc,
+            List<URI> capabilities, Set<String> xml_ids)
+            throws SRUClientException, XPathExpressionException {
+        List<Layer> supportedLayers = null;
+        XPathExpression exp = xpath.compile("//ed:SupportedLayers/ed:SupportedLayer");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            logger.debug("parsing supported layers");
+            for (int i = 0; i < list.getLength(); i++) {
+                Element item = (Element) list.item(i);
+                String id = getAttribute(item, "id");
+                if (id == null) {
+                    throw new SRUClientException("Element <SupportedLayer> "
+                            + "must have a proper 'id' attribute");
+                }
+
+                if (xml_ids.contains(id)) {
+                    throw new SRUClientException("The value of attribute " +
+                            "'id' of element <SupportedLayer> must be " +
+                            "unique: " + id);
+                }
+                xml_ids.add(id);
+
+                String s = getAttribute(item, "result-id");
+                if (s == null) {
+                    throw new SRUClientException("Element <SupportedLayer> "
+                            + "must have a proper 'result-id' attribute");
+                }
+                URI resultId = null;
+                try {
+                    resultId = new URI(s);
+                } catch (URISyntaxException e) {
+                    throw new SRUClientException("Attribute 'result-id' on " +
+                            "Element <SupportedLayer> is not encoded " +
+                            "as proper URI: " + s);
+                }
+
+                String type = cleanString(item.getTextContent());
+                if ((type != null) && !type.isEmpty()) {
+                    // sanity check on layer types
+                    if (!(type.equals("text") ||
+                            type.equals("lemma") ||
+                            type.equals("pos") ||
+                            type.equals("orth") ||
+                            type.equals("norm") ||
+                            type.equals("phonetic") ||
+                            type.startsWith("x-"))) {
+                        logger.debug("layer type '{}' is not defined by specification", type);
+                    }
+                } else {
+                    throw new SRUClientException("Element <SupportedLayer> " +
+                            "does not define a proper layer type");
+                }
+
+                String qualifier = getAttribute(item, "qualifier");
+
+                Layer.ContentEncoding encoding =
+                        Layer.ContentEncoding.VALUE;
+                s = getAttribute(item, "type");
+                if (s != null) {
+                    if (LAYER_ENCODING_VALUE.equals(s)) {
+                        encoding = Layer.ContentEncoding.VALUE;
+                    } else if (LAYER_ENCODING_EMPTY.equals(s)) {
+                        encoding = Layer.ContentEncoding.EMPTY;
+                    } else {
+                        throw new SRUClientException(
+                                "invalid layer encoding: " + s);
+                    }
+                }
+
+                String altValueInfo = getAttribute(item, "alt-value-info");
+                URI altValueInfoURI = null;
+                if (altValueInfo != null) {
+                    s = getAttribute(item, "alt-value-info-uri");
+                    if (s != null) {
+                        try {
+                          altValueInfoURI = new URI(s);
+                        } catch (URISyntaxException e) {
+                            throw new SRUClientException("Attribute " +
+                                    "'alt-value-info-uri' on Element " +
+                                    "<SupportedLayer> is not encoded " +
+                                    "as proper URI: " + s);
+                        }
+                    }
+                }
+
+                if (supportedLayers == null) {
+                    supportedLayers = new ArrayList<>(list.getLength());
+                }
+                supportedLayers.add(new Layer(id, resultId, type, encoding,
+                        qualifier, altValueInfo, altValueInfoURI));
+            }
+        }
+
+        if (capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) && (supportedLayers == null)) {
+            throw new SRUClientException("Endpoint must declare " +
+                    "all supported layers (<SupportedLayers>) if they " +
+                    "provide the 'advanced-search' (" +
+                    ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH +
+                    ") capability");
+        }
+        if ((supportedLayers != null) &&
+                !capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH)) {
+                logger.warn("Endpoint description has <SupportedLayer> but " +
+                        "does not indicate support for Advanced Search using " +
+                        "the capability ({})!",
+                        ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
+        } // necessary
+
+        return supportedLayers;
+    }
+
+
+    private static List<ResourceInfo> parseResources(XPath xpath, NodeList nodes,
+            int depth, int maxDepth, Set<String> pids, List<DataView> supportedDataViews,
+            List<Layer> supportedLayers, int version, boolean hasAdv)
+                    throws SRUClientException, XPathExpressionException {
+        List<ResourceInfo> ris = null;
+
+        for (int k = 0; k < nodes.getLength(); k++) {
+            final Element node = (Element) nodes.item(k);
+            String pid = null;
+            Map<String, String> titles = null;
+            Map<String, String> descrs = null;
+            String link = null;
+            List<String> langs = null;
+            List<DataView> availableDataViews = null;
+            List<Layer> availableLayers = null;
+            List<ResourceInfo> sub = null;
+
+            pid = getAttribute(node, "pid");
+            if (pid == null) {
+                throw new SRUClientException("Element <ResourceInfo> " +
+                        "must have a proper 'pid' attribute");
+            }
+            if (pids.contains(pid)) {
+                throw new SRUClientException("Another element <Resource> " +
+                        "with pid '" + pid + "' already exists");
+            }
+            pids.add(pid);
+            logger.debug("Processing resource with pid '{}'", pid);
+
+            XPathExpression exp = xpath.compile("ed:Title");
+            NodeList list = (NodeList) exp.evaluate(node,
+                    XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    final Element n = (Element) list.item(i);
+
+                    final String lang = getLangAttribute(n);
+                    if (lang == null) {
+                        throw new SRUClientException("Element <Title> " +
+                                "must have a proper 'xml:lang' attribute");
+                    }
+
+                    final String title = cleanString(n.getTextContent());
+                    if (title == null) {
+                        throw new SRUClientException("Element <Title> " +
+                                "must have a non-empty 'xml:lang' attribute");
+                    }
+
+                    if (titles == null) {
+                        titles = new HashMap<>();
+                    }
+                    if (titles.containsKey(lang)) {
+                        logger.debug("title with language '{}' already exists",
+                                lang);
+                    } else {
+                        titles.put(lang, title);
+                    }
+                }
+                if ((titles != null) && !titles.containsKey(LANG_EN)) {
+                    throw new SRUClientException("A <Title> with language 'en' is mandatory");
+                }
+            }
+
+            exp = xpath.compile("ed:Description");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n = (Element) list.item(i);
+
+                    String lang = getLangAttribute(n);
+                    if (lang == null) {
+                        throw new SRUClientException("Element <Description> " +
+                                "must have a proper 'xml:lang' attribute");
+
+                    }
+                    String desc = cleanString(n.getTextContent());
+
+                    if (descrs == null) {
+                        descrs = new HashMap<>();
+                    }
+
+                    if (descrs.containsKey(lang)) {
+                        logger.debug("description with language '{}' " +
+                                "already exists", lang);
+                    } else {
+                        descrs.put(lang, desc);
+                    }
+                }
+                if ((descrs != null) && !descrs.containsKey(LANG_EN)) {
+                    throw new SRUClientException("A <Description> with language 'en' is mandatory");
+                }
+            }
+
+            exp = xpath.compile("ed:LandingPageURI");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n = (Element) list.item(i);
+                    link = cleanString(n.getTextContent());
+                }
+            }
+
+            exp = xpath.compile("ed:Languages/ed:Language");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n = (Element) list.item(i);
+
+                    String s = n.getTextContent();
+                    if (s != null) {
+                        s = s.trim();
+                        if (s.isEmpty()) {
+                            s = null;
+                        }
+                    }
+
+                    /*
+                     * enforce three letter codes
+                     */
+                    if ((s == null) || (s.length() != 3)) {
+                        throw new SRUClientException("Element <Language> " +
+                                "must use ISO-639-3 three letter language codes");
+                    }
+
+                    if (langs == null) {
+                        langs = new ArrayList<>();
+                    }
+                    langs.add(s);
+                }
+            }
+
+            exp = xpath.compile("ed:AvailableDataViews");
+            Node n = (Node) exp.evaluate(node, XPathConstants.NODE);
+            if ((n != null) && (n instanceof Element)) {
+                String ref = getAttribute((Element) n, "ref");
+                if (ref == null) {
+                    throw new SRUClientException("Element <AvailableDataViews> " +
+                                    "must have a 'ref' attribute");
+                }
+                String[] refs = ref.split("\\s+");
+                if ((refs == null) || (refs.length < 1)) {
+                    throw new SRUClientException("Attribute 'ref' on element " +
+                            "<AvailableDataViews> must contain a whitespace " +
+                            "seperated list of data view references");
+                }
+
+                for (String ref2 : refs) {
+                    DataView dataview = null;
+                    for (DataView dv : supportedDataViews) {
+                        if (ref2.equals(dv.getIdentifier())) {
+                            dataview = dv;
+                            break;
+                        }
+                    }
+                    if (dataview != null) {
+                        if (availableDataViews == null) {
+                            availableDataViews = new ArrayList<>();
+                        }
+                        availableDataViews.add(dataview);
+                    } else {
+                        throw new SRUClientException("A data view with " + "identifier '" + ref2 +
+                                        "' was not defined in <SupportedDataViews>");
+                    }
+                }
+            } else {
+                throw new SRUClientException(
+                        "missing element <AvailableDataViews>");
+            }
+            if (availableDataViews == null) {
+                throw new SRUClientException("No available data views were " +
+                        "defined for resource with PID '" + pid + "'");
+            }
+
+            exp = xpath.compile("ed:AvailableLayers");
+            n = (Node) exp.evaluate(node, XPathConstants.NODE);
+            if ((n != null) && (n instanceof Element)) {
+                String ref = getAttribute((Element) n, "ref");
+                if (ref == null) {
+                    throw new SRUClientException("Element <AvailableLayers> " +
+                            "must have a 'ref' attribute");
+                }
+                String[] refs = ref.split("\\s+");
+                if ((refs == null) || (refs.length < 1)) {
+                    throw new SRUClientException("Attribute 'ref' on element " +
+                            "<AvailableLayers> must contain a whitespace " +
+                            "seperated list of data view references");
+                }
+
+                for (String ref2 : refs) {
+                    Layer layer = null;
+                    for (Layer l : supportedLayers) {
+                        if (ref2.equals(l.getIdentifier())) {
+                            layer = l;
+                            break;
+                        }
+                    }
+                    if (layer != null) {
+                        if (availableLayers == null) {
+                            availableLayers = new ArrayList<>();
+                        }
+                        availableLayers.add(layer);
+                    } else {
+                        throw new SRUClientException("A layer with identifier '" + ref2 +
+                                "' was not defined " + "in <SupportedLayers>");
+                    }
+                }
+            } else {
+                if (hasAdv) {
+                    logger.debug("no <SupportedLayers> for resource '{}'", pid);
+                }
+            }
+
+            final int nextDepth = depth + 1;
+            if ((maxDepth == INFINITE_MAX_DEPTH) || (nextDepth < maxDepth)) {
+                exp = xpath.compile("ed:Resources/ed:Resource");
+                list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+                if ((list != null) && (list.getLength() > 0)) {
+                    sub = parseResources(xpath, list, depth + 1, maxDepth, pids, supportedDataViews,
+                            supportedLayers, version, hasAdv);
+                }
+            }
+
+            if (ris == null) {
+                ris = new ArrayList<>();
+            }
+            if ((availableLayers != null) && (version < 1)) {
+                logger.warn("Endpoint claims to support FCS 1.0, but " +
+                        "includes information about <AvailableLayers> for " +
+                        "resource with pid '{}'", pid);
+            }
+            ris.add(new ResourceInfo(pid, titles, descrs, link, langs,
+                    availableDataViews, availableLayers, sub));
+        }
+
+        return ris;
+    }
+
+
+    private static String getAttribute(Element el, String localName) {
+        String value = el.getAttribute(localName);
+        if (value != null) {
+            value = value.trim();
+            if (!value.isEmpty()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+
+    private static String getLangAttribute(Element el) {
+        String lang = el.getAttributeNS(XMLConstants.XML_NS_URI, "lang");
+        if (lang != null) {
+            lang = lang.trim();
+            if (!lang.isEmpty()) {
+                return lang;
+            }
+        }
+        return null;
+    }
+
+
+    private static String cleanString(String s) {
+        if (s != null) {
+            s = s.trim();
+            if (!s.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (String z : s.split("\\s*\\n+\\s*")) {
+                    z = z.trim();
+                    if (!z.isEmpty()) {
+                        if (sb.length() > 0) {
+                            sb.append(' ');
+                        }
+                        sb.append(z);
+                    }
+                }
+                if (sb.length() > 0) {
+                    return sb.toString();
+                }
+            }
+        }
+        return null;
+    }
+
+
+    // -----------------------------------------------------------------------
+
+    private static ClarinFCSEndpointDescription parseEndpointDescription(XMLStreamReader reader, int maxDepth)
             throws XMLStreamException, SRUClientException {
         final int version = parseVersion(reader);
         if ((version != VERSION_1) && (version != VERSION_2)) {
@@ -121,7 +808,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                 if (!s.startsWith(CAPABILITY_PREFIX)) {
                     throw new XMLStreamException("Capabilites must start " +
                             "with prefix '" + CAPABILITY_PREFIX +
-                            "' (offending value = '" + s +"')",
+                            "' (offending value = '" + s + "')",
                             reader.getLocation());
                 }
                 final URI uri = new URI(s);
@@ -227,9 +914,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                             "or ' ' (space)", reader.getLocation());
                 }
                 URI resultId = null;
-                final String s1 =
-                        XmlStreamReaderUtils.readAttributeValue(reader,
-                                null, "result-id");
+                final String s1 = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "result-id");
                 try {
                     resultId = new URI(s1);
                 } catch (URISyntaxException e) {
@@ -241,9 +927,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                 String qualifier = XmlStreamReaderUtils.readAttributeValue(reader, null, "qualifier", false);
                 String altValueInfo = XmlStreamReaderUtils.readAttributeValue(reader, null, "alt-value-info", false);
                 URI altValueInfoURI = null;
-                final String s2 =
-                        XmlStreamReaderUtils.readAttributeValue(reader, null,
-                                "alt-value-info-uri", false);
+                final String s2 = XmlStreamReaderUtils.readAttributeValue(reader, null,
+                        "alt-value-info-uri", false);
                 if (s2 != null) {
                     try {
                         altValueInfoURI = new URI(s2);
@@ -286,9 +971,8 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
 
         // Resources
-        final List<ResourceInfo> resources =
-                parseResources(reader, 0, maxDepth, hasAdvancedSearch,
-                        supportedDataViews, supportedLayers);
+        final List<ResourceInfo> resources = parseResources(reader, 0, maxDepth, hasAdvancedSearch,
+                supportedDataViews, supportedLayers);
 
         // skip over extensions
         while (!XmlStreamReaderUtils.peekEnd(reader,
@@ -316,7 +1000,7 @@ public class ClarinFCSEndpointDescriptionParser implements
      * @return the default resource parsing depth or <code>-1</code> for
      *         infinite.
      */
-    public int getMaximumResourcePArsingDepth() {
+    public int getMaximumResourceParsingDepth() {
         return maxDepth;
     }
 
@@ -338,17 +1022,14 @@ public class ClarinFCSEndpointDescriptionParser implements
 
             logger.debug("parsing resource with pid = {}", pid);
 
-            final Map<String, String> title =
-                    parseI18String(reader, "Title", true);
+            final Map<String, String> title = parseI18String(reader, "Title", true);
             logger.debug("title: {}", title);
 
-            final Map<String, String> description =
-                    parseI18String(reader, "Description", false);
+            final Map<String, String> description = parseI18String(reader, "Description", false);
             logger.debug("description: {}", description);
 
-            final String landingPageURI =
-                    XmlStreamReaderUtils.readContent(reader, ED_NS_URI,
-                            "LandingPageURI", false);
+            final String landingPageURI = XmlStreamReaderUtils.readContent(reader, ED_NS_URI,
+                    "LandingPageURI", false);
             logger.debug("landingPageURI: {}", landingPageURI);
 
             List<String> languages = null;
@@ -356,8 +1037,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     ED_NS_URI, "Languages", true);
             while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
                     "Language", (languages == null))) {
-                final String language =
-                        XmlStreamReaderUtils.readString(reader, true);
+                final String language = XmlStreamReaderUtils.readString(reader, true);
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Language");
                 if (languages == null) {
                     languages = new ArrayList<>();
@@ -407,9 +1087,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<Layer> layers = null;
             if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
                     "AvailableLayers", false, true)) {
-                final String ls =
-                        XmlStreamReaderUtils.readAttributeValue(reader,
-                                null, "ref", true);
+                final String ls = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "ref", true);
                 reader.next(); // consume start tag
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "AvailableLayers");
                 for (String l : ls.split("\\s+")) {
@@ -528,9 +1207,9 @@ public class ClarinFCSEndpointDescriptionParser implements
             throws XMLStreamException {
         final String s = XmlStreamReaderUtils.readAttributeValue(reader,
                 null, "delivery-policy", true);
-        if ("send-by-default".equals(s)) {
+        if (POLICY_SEND_DEFAULT.equals(s)) {
             return DeliveryPolicy.SEND_BY_DEFAULT;
-        } else if ("need-to-request".equals(s)) {
+        } else if (POLICY_NEED_REQUEST.equals(s)) {
             return DeliveryPolicy.NEED_TO_REQUEST;
         } else {
             throw new XMLStreamException("Unexpected value '" + s +
@@ -545,9 +1224,9 @@ public class ClarinFCSEndpointDescriptionParser implements
         final String s = XmlStreamReaderUtils.readAttributeValue(reader,
                 null, "encoding", false);
         if (s != null) {
-            if ("value".equals(s)) {
+            if (LAYER_ENCODING_VALUE.equals(s)) {
                 return ContentEncoding.VALUE;
-            } else if ("need-to-request".equals(s)) {
+            } else if (POLICY_NEED_REQUEST.equals(s)) {
                 return ContentEncoding.EMPTY;
             } else {
                 throw new XMLStreamException("Unexpected value '" + s +

@@ -75,6 +75,7 @@ public class ClarinFCSEndpointDescriptionParser implements
 
     private static final Logger logger = LoggerFactory.getLogger(ClarinFCSClientBuilder.class);
     private static final String ED_NS_URI = "http://clarin.eu/fcs/endpoint-description";
+    private static final String ED_NS_LEGACY_URI = "http://clarin.eu/fcs/1.0/resource-info";
     private static final QName ED_ROOT_ELEMENT = new QName(ED_NS_URI, "EndpointDescription");
     private static final int VERSION_1 = 1;
     private static final int VERSION_2 = 2;
@@ -162,6 +163,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             logger.debug("parsing with xpath");
             final Document erdDoc = XmlStreamReaderUtils.parseToDocument(reader);
             try {
+                checkLegacyMode(erdDoc);
                 return parseEndpointDescription(erdDoc, maxDepth);
             } catch (XPathExpressionException e) {
                 throw new SRUClientException("internal error", e);
@@ -170,7 +172,44 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    /**
+     * Get the maximum resource enumeration parsing depth. The first level is
+     * indicate by the value <code>0</code>.
+     *
+     * @return the default resource parsing depth or <code>-1</code> for
+     *         infinite.
+     */
+    public int getMaximumResourceParsingDepth() {
+        return maxDepth;
+    }
+
+
     // -----------------------------------------------------------------------
+
+    private static void checkLegacyMode(Document doc)
+            throws SRUClientException {
+        Element root = doc.getDocumentElement();
+        if (root != null) {
+            String ns = root.getNamespaceURI();
+            if (ns != null) {
+                if (ns.equals(ED_NS_LEGACY_URI)) {
+                    logger.error("Detected out-dated resource info catalog file." +
+                            " Update to the current version is required");
+                    throw new SRUClientException("unsupport file format: " + ns);
+                } else if (!ns.equals(ED_NS_URI)) {
+                    logger.error("Detected unsupported resource info catalog file " + 
+                            " with namespace '" + ns + '"');
+                    throw new SRUClientException("Unsupport file format: " + ns);
+                }
+            } else {
+                throw new SRUClientException("No namespace URI was detected " +
+                        "for resource info catalog file!");
+            }
+        } else {
+            throw new SRUClientException("Error retrieving root element");
+        }
+    }
+
 
     private static ClarinFCSEndpointDescription parseEndpointDescription(Document doc, int maxDepth)
         throws SRUClientException, XPathExpressionException {
@@ -221,27 +260,29 @@ public class ClarinFCSEndpointDescriptionParser implements
         if (version == -1) {
             throw new SRUClientException("Attribute @version missing on element <EndpointDescription>");
         }
+        logger.debug("Endpoint description version is {}", version);
 
         // capabilities
         List<URI> capabilities = parseCapabilities(xpath, doc, version);
-        final boolean hasBasicSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
-        final boolean hasAdvancedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        logger.debug("CAP: {}", capabilities);
 
         // used to check for uniqueness of id attribute
         final Set<String> xml_ids = new HashSet<>();
 
         // SupportedDataViews
         List<DataView> supportedDataViews = parseSupportedDataViews(xpath, doc, capabilities, xml_ids);
+        logger.debug("DV: {}", supportedDataViews);
 
         // SupportedLayers
         List<Layer> supportedLayers = parseSupportedLayers(xpath, doc, capabilities, xml_ids);
+        logger.debug("L: {}", supportedLayers);
 
         // Resources
         exp = xpath.compile("/ed:EndpointDescription/ed:Resources/ed:Resource");
         NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
         final Set<String> pids = new HashSet<>();
         List<ResourceInfo> resources = parseResources(xpath, list, 0, maxDepth, pids,
-                supportedDataViews, supportedLayers, version, hasAdvancedSearch);
+                supportedDataViews, supportedLayers, version, capabilities);
         if ((resources == null) || resources.isEmpty()) {
             throw new SRUClientException("No resources where defined in endpoint description");
         }
@@ -362,6 +403,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     "no valid information about supported data views");
         }
 
+        final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
         boolean hasHitsView = false;
         boolean hasAdvView = false;
         if (supportedDataViews != null) {
@@ -379,7 +421,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     MIMETYPE_HITS_DATAVIEW +
                     "') to conform to CLARIN-FCS specification");
         }
-        if (capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) && !hasAdvView) {
+        if (hasAdvancedSearch && !hasAdvView) {
             throw new SRUClientException("Endpoint claimes to support " +
                     "Advanced FCS but does not declare Advanced Data View (" +
                     MIMETYPE_ADV_DATAVIEW + ") in <SupportedDataViews>");
@@ -483,15 +525,15 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
         }
 
-        if (capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) && (supportedLayers == null)) {
+        final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
+        if (hasAdvancedSearch && (supportedLayers == null)) {
             throw new SRUClientException("Endpoint must declare " +
                     "all supported layers (<SupportedLayers>) if they " +
                     "provide the 'advanced-search' (" +
                     ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH +
                     ") capability");
         }
-        if ((supportedLayers != null) &&
-                !capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH)) {
+        if ((supportedLayers != null) && !hasAdvancedSearch) {
                 logger.warn("Endpoint description has <SupportedLayer> but " +
                         "does not indicate support for Advanced Search using " +
                         "the capability ({})!",
@@ -504,8 +546,9 @@ public class ClarinFCSEndpointDescriptionParser implements
 
     private static List<ResourceInfo> parseResources(XPath xpath, NodeList nodes,
             int depth, int maxDepth, Set<String> pids, List<DataView> supportedDataViews,
-            List<Layer> supportedLayers, int version, boolean hasAdv)
+            List<Layer> supportedLayers, int version, List<URI> capabilities)
                     throws SRUClientException, XPathExpressionException {
+        final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
         List<ResourceInfo> ris = null;
 
         for (int k = 0; k < nodes.getLength(); k++) {
@@ -530,11 +573,10 @@ public class ClarinFCSEndpointDescriptionParser implements
                         "with pid '" + pid + "' already exists");
             }
             pids.add(pid);
-            logger.debug("Processing resource with pid '{}'", pid);
+            logger.debug("Processing resource with pid '{}' at level {}", pid, depth);
 
             XPathExpression exp = xpath.compile("ed:Title");
-            NodeList list = (NodeList) exp.evaluate(node,
-                    XPathConstants.NODESET);
+            NodeList list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
             if ((list != null) && (list.getLength() > 0)) {
                 for (int i = 0; i < list.getLength(); i++) {
                     final Element n = (Element) list.item(i);
@@ -555,16 +597,17 @@ public class ClarinFCSEndpointDescriptionParser implements
                         titles = new HashMap<>();
                     }
                     if (titles.containsKey(lang)) {
-                        logger.debug("title with language '{}' already exists",
+                        logger.warn("A <Title> with language '{}' already exists",
                                 lang);
                     } else {
                         titles.put(lang, title);
                     }
                 }
                 if ((titles != null) && !titles.containsKey(LANG_EN)) {
-                    throw new SRUClientException("A <Title> with language 'en' is mandatory");
+                    logger.warn("A <Title> with language 'en' is mandatory");
                 }
             }
+            logger.debug("Title: {}", titles);
 
             exp = xpath.compile("ed:Description");
             list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
@@ -585,16 +628,17 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
 
                     if (descrs.containsKey(lang)) {
-                        logger.debug("description with language '{}' " +
+                        logger.warn("A <Description>  with language '{}' " +
                                 "already exists", lang);
                     } else {
                         descrs.put(lang, desc);
                     }
                 }
                 if ((descrs != null) && !descrs.containsKey(LANG_EN)) {
-                    throw new SRUClientException("A <Description> with language 'en' is mandatory");
+                    logger.warn("A <Description> with language 'en' is mandatory");
                 }
             }
+            logger.debug("Description: {}", descrs);
 
             exp = xpath.compile("ed:Institution");
             list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
@@ -615,16 +659,17 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
 
                     if (insts.containsKey(lang)) {
-                        logger.debug("institution with language '{}' " +
+                        logger.warn("An <Institution> with language '{}' " +
                                 "already exists", lang);
                     } else {
                         insts.put(lang, inst);
                     }
                 }
                 if ((insts != null) && !insts.containsKey(LANG_EN)) {
-                    throw new SRUClientException("A <Institution> with language 'en' is mandatory");
+                    logger.warn("An <Institution> with language 'en' is mandatory");
                 }
             }
+            logger.debug("Institution: {}", insts);
 
             exp = xpath.compile("ed:LandingPageURI");
             list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
@@ -634,6 +679,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     link = cleanString(n.getTextContent());
                 }
             }
+            logger.debug("LandingPageURI: {}", link);
 
             exp = xpath.compile("ed:Languages/ed:Language");
             list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
@@ -663,6 +709,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     langs.add(s);
                 }
             }
+            logger.debug("Languages: {}", langs);
 
             exp = xpath.compile("ed:AvailableDataViews");
             Node n = (Node) exp.evaluate(node, XPathConstants.NODE);
@@ -698,13 +745,13 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 }
             } else {
-                throw new SRUClientException(
-                        "missing element <AvailableDataViews>");
+                throw new SRUClientException("Missing element <AvailableDataViews>");
             }
             if (availableDataViews == null) {
                 throw new SRUClientException("No available data views were " +
                         "defined for resource with PID '" + pid + "'");
             }
+            logger.debug("DataViews: {}", availableDataViews);
 
             exp = xpath.compile("ed:AvailableLayers");
             n = (Node) exp.evaluate(node, XPathConstants.NODE);
@@ -740,10 +787,11 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 }
             } else {
-                if (hasAdv) {
-                    logger.debug("no <SupportedLayers> for resource '{}'", pid);
+                if (hasAdvancedSearch) {
+                    logger.debug("No <SupportedLayers> for resource '{}'", pid);
                 }
             }
+            logger.debug("Layers: {}", availableLayers);
 
             final int nextDepth = depth + 1;
             if ((maxDepth == INFINITE_MAX_DEPTH) || (nextDepth < maxDepth)) {
@@ -751,9 +799,11 @@ public class ClarinFCSEndpointDescriptionParser implements
                 list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
                 if ((list != null) && (list.getLength() > 0)) {
                     sub = parseResources(xpath, list, depth + 1, maxDepth, pids, supportedDataViews,
-                            supportedLayers, version, hasAdv);
+                            supportedLayers, version, capabilities);
                 }
             }
+
+            // Extensions (skipped) ...
 
             if (ris == null) {
                 ris = new ArrayList<>();
@@ -1024,18 +1074,6 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
-    /**
-     * Get the maximum resource enumeration parsing depth. The first level is
-     * indicate by the value <code>0</code>.
-     *
-     * @return the default resource parsing depth or <code>-1</code> for
-     *         infinite.
-     */
-    public int getMaximumResourceParsingDepth() {
-        return maxDepth;
-    }
-
-
     private static List<ResourceInfo> parseResources(XMLStreamReader reader,
             int depth, int maxDepth, boolean hasAdvancedSearch,
             List<DataView> supportedDataviews, List<Layer> supportedLayers)
@@ -1146,7 +1184,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 } // for
                 logger.debug("Layers: {}", layers);
-            } // for
+            }
             if (hasAdvancedSearch && (layers == null)) {
                 throw new XMLStreamException("Endpoint must declare " +
                         "all available layers (<AvailableLayers>) on a " +

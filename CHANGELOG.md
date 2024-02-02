@@ -1,5 +1,23 @@
 # Changelog
 
+# [2.1.1](https://github.com/clarin-eric/fcs-simple-client/releases/tag/2.1.1) - 2024-02-02
+
+- Changes:
+  - `<EndpointDescription>`: pass `<Resource>`s that have missing required `xml:lang="en"` elements
+  - Change log levels to `warn` for specification violations
+  - Add more debug logs for `<EndpointDescription>` parsing
+  - Refactor code
+
+- General:
+  - Update `pom.xml` description
+
+- Dependencies:
+  - Bump `sru-client` to `2.2.1`
+  - Add `maven-release-plugin`
+  - Bump Maven build plugin versions
+  - Bump `org.slf4j` to `1.7.36`
+  - Bump `com.auth0:java-jwt` to `3.19.4`
+
 # [2.1.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/2.1.0) - 2024-02-01
 
 - Additions:

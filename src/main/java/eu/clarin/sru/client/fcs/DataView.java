@@ -71,7 +71,7 @@ public abstract class DataView {
      */
     public boolean isMimeType(String type) {
         if (type == null) {
-            throw new NullPointerException("mimetype == null");
+            throw new NullPointerException("type == null");
         }
         return (this.type.equals(type));
     }

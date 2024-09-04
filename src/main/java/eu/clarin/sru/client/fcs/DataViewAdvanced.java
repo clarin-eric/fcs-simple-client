@@ -125,7 +125,7 @@ public class DataViewAdvanced extends DataView {
             }
             this.id = id;
             if (spans == null) {
-                throw new NullPointerException("span == null");
+                throw new NullPointerException("spans == null");
             }
             if (spans.isEmpty()) {
                 throw new IllegalArgumentException("spans is empty");

@@ -64,10 +64,10 @@ public class DataViewHits extends DataView {
         }
         this.offsets = offsets;
         if (offsets_idx < 0) {
-            throw new IllegalArgumentException("offset_idx < 0");
+            throw new IllegalArgumentException("offsets_idx < 0");
         }
         if (offsets_idx > offsets.length) {
-            throw new IllegalArgumentException("offset_idx > offsets.length");
+            throw new IllegalArgumentException("offsets_idx > offsets.length");
         }
         this.max_offset = (offsets_idx / 2);
     }

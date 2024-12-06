@@ -1,5 +1,27 @@
 # Changelog
 
+# [2.2.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.2.0) - 2024-12-06
+
+- Additions:
+  - **BREAKING** Add `<AvailabilityRestriction>` element to `<Resource>`s in `<EndpointDescription>`. (after `<Languages>` element)
+  - Add `AvailabilityRestriction` enum to `ResourceInfo` class
+  - Add `CAPABILITY_AUTHENTICATED_SEARCH` capability URL constant
+  - Add function to add public/private RSA keys to `ClarinFCSRequestAuthenticator.Builder` using content strings (besides files)
+
+- Changes:
+  - Move public/private RSA PEM key readers to `KeyReaderUtils` class
+  - Add `context` map to all `ClarinFCSRequestAuthenticator` functions
+  - Add @Deprecated decorators to streaming `ClarinFCSEndpointDescriptionParser` functions  
+    (reason: less robust against future changes and unexpected elements)
+
+- Dependencies:
+  - Bump `sru-client` to `2.3.0`
+  - Add `maven-release-plugin`
+  - Bump Maven build plugin versions
+  - Bump `org.slf4j` to `2.0.16`
+  - Bump `org.bouncycastle:bcprov-ext-jdk15on` to `org.bouncycastle:bcprov-jdk18on:1.79`
+  - Bump `com.auth0:java-jwt` to `4.4.0`
+
 # [2.1.1](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.1.1) - 2024-02-02
 
 - Changes:

@@ -281,6 +281,10 @@ class TestUtils {
                 logger.info("{}    landingPageURI: {}",
                         indent, ri.getLandingPageURI());
             }
+            if (ri.hasAvailabilityRestriction()) {
+                logger.info("{}    availabilityRestriction: {}",
+                        indent, ri.getAvailabilityRestriction());
+            }
             for (ClarinFCSEndpointDescription.DataView dv :
                 ri.getAvailableDataViews()) {
                 logger.info("{}    available dataviews: type={}, policy={}",

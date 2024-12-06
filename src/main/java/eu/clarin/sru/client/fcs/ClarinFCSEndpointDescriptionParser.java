@@ -52,6 +52,7 @@ import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView.DeliveryPolicy;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer.ContentEncoding;
+import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ResourceInfo.AvailabilityRestriction;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ResourceInfo;
 
 
@@ -87,6 +88,8 @@ public class ClarinFCSEndpointDescriptionParser implements
     private static final String POLICY_NEED_REQUEST = "need-to-request";
     private static final String LAYER_ENCODING_VALUE = "value";
     private static final String LAYER_ENCODING_EMPTY = "empty";
+    private static final String AVAILABILITY_RESTRICTION_AUTHONLY = "authOnly";
+    private static final String AVAILABILITY_RESTRICTION_PERSONALID = "personalIdentifier";
 
     private final int maxDepth;
     private final boolean streaming;
@@ -314,6 +317,7 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
         final boolean hasBasicSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
         final boolean hasAdvancedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        final boolean hasAuthenticatedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH) != -1);
         if (!hasBasicSearch) {
             throw new SRUClientException("Endpoint must support 'basic-search' (" +
                     ClarinFCSConstants.CAPABILITY_BASIC_SEARCH +
@@ -323,6 +327,12 @@ public class ClarinFCSEndpointDescriptionParser implements
             logger.warn("Endpoint description is declared as version " +
                     "FCS 1.0 (@version = 1), but contains support for " +
                     "Advanced Search in capabilities list! FCS 1.0 only " +
+                    "supports Basic Search");
+        }
+        if (hasAuthenticatedSearch && (version < 2)) {
+            logger.warn("Endpoint description is declared as version " +
+                    "FCS 1.0 (@version = 1), but contains support for " +
+                    "Authenticated Search in capabilities list! FCS 1.0 only " +
                     "supports Basic Search");
         }
 
@@ -549,6 +559,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<Layer> supportedLayers, int version, List<URI> capabilities)
                     throws SRUClientException, XPathExpressionException {
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
+        final boolean hasAuthenticatedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH);
         List<ResourceInfo> ris = null;
 
         for (int k = 0; k < nodes.getLength(); k++) {
@@ -559,6 +570,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             Map<String, String> insts = null;
             String link = null;
             List<String> langs = null;
+            AvailabilityRestriction availabilityRestriction = AvailabilityRestriction.NONE;
             List<DataView> availableDataViews = null;
             List<Layer> availableLayers = null;
             List<ResourceInfo> sub = null;
@@ -711,6 +723,34 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             logger.debug("Languages: {}", langs);
 
+            exp = xpath.compile("ed:AvailabilityRestriction");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n = (Element) list.item(i);
+                    String avr = cleanString(n.getTextContent());
+                    if (avr != null) {
+                        if (AVAILABILITY_RESTRICTION_AUTHONLY.equals(avr)) {
+                            availabilityRestriction = AvailabilityRestriction.AUTH_ONLY;
+                        } else if (AVAILABILITY_RESTRICTION_PERSONALID.equals(avr)) {
+                            availabilityRestriction = AvailabilityRestriction.PERSONAL_IDENTIFIER;
+                        } else {
+                            throw new SRUClientException(
+                                    "invalid availability restriction: " + avr);
+                        }
+                    }
+                    if (!AvailabilityRestriction.NONE.equals(availabilityRestriction) && !hasAuthenticatedSearch) {
+                        throw new SRUClientException(
+                                    "Resource declares <AvailabilityRestriction>" + 
+                                    "but does support 'authenticated-search' (" +
+                                    ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH +
+                                    ")!");
+                    }
+                    // TODO: check if parent also declared restriction and whether they differ -> warn
+                }
+            }
+            logger.debug("AvailabilityRestriction: {}", availabilityRestriction);
+
             exp = xpath.compile("ed:AvailableDataViews");
             Node n = (Node) exp.evaluate(node, XPathConstants.NODE);
             if ((n != null) && (n instanceof Element)) {
@@ -814,7 +854,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                         "resource with pid '{}'", pid);
             }
             ris.add(new ResourceInfo(pid, titles, descrs, insts, link, langs,
-                    availableDataViews, availableLayers, sub));
+                    availabilityRestriction, availableDataViews,
+                    availableLayers, sub));
         }
 
         return ris;
@@ -915,11 +956,13 @@ public class ClarinFCSEndpointDescriptionParser implements
                 .indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
         final boolean hasAdvancedSearch = (capabilities
                 .indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        final boolean hasAuthenicatedSearch = (capabilities
+                .indexOf(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH) != -1);
         if (!hasBasicSearch) {
             throw new SRUClientException(
                     "Endpoint must support " + "'basic-search' (" +
                             ClarinFCSConstants.CAPABILITY_BASIC_SEARCH +
-                            ") to conform to CLARIN-FCS specification");
+                            ") to conform to CLARIN-FCS specification!");
         }
 
         // SupportedDataViews
@@ -1052,8 +1095,9 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
 
         // Resources
-        final List<ResourceInfo> resources = parseResources(reader, 0, maxDepth, hasAdvancedSearch,
-                supportedDataViews, supportedLayers);
+        final List<ResourceInfo> resources = parseResources(reader, 0, maxDepth,
+                hasAdvancedSearch, hasAuthenicatedSearch, supportedDataViews,
+                supportedLayers);
 
         // skip over extensions
         while (!XmlStreamReaderUtils.peekEnd(reader,
@@ -1076,7 +1120,8 @@ public class ClarinFCSEndpointDescriptionParser implements
 
     private static List<ResourceInfo> parseResources(XMLStreamReader reader,
             int depth, int maxDepth, boolean hasAdvancedSearch,
-            List<DataView> supportedDataviews, List<Layer> supportedLayers)
+            boolean hasAuthenicatedSearch, List<DataView> supportedDataviews,
+            List<Layer> supportedLayers)
             throws XMLStreamException {
         List<ResourceInfo> resources = null;
 
@@ -1126,6 +1171,13 @@ public class ClarinFCSEndpointDescriptionParser implements
             } // while
             XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Languages", true);
             logger.debug("languages: {}", languages);
+
+            AvailabilityRestriction availabilityRestriction = AvailabilityRestriction.NONE;
+            if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI, "AvailabilityRestriction", false)) {
+                availabilityRestriction = parseAvailabilityRestriction(reader);
+                XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "AvailabilityRestriction");
+                logger.debug("availability restriction: {}", availabilityRestriction);
+            }
 
             // AvailableDataViews
             XmlStreamReaderUtils.readStart(reader, ED_NS_URI, "AvailableDataViews", true, true);
@@ -1194,7 +1246,6 @@ public class ClarinFCSEndpointDescriptionParser implements
                         ")", reader.getLocation());
             }
 
-
             List<ResourceInfo> subResources = null;
             if (XmlStreamReaderUtils.peekStart(reader,
                     ED_NS_URI, "Resources")) {
@@ -1202,8 +1253,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                 if ((maxDepth == INFINITE_MAX_DEPTH) ||
                         (nextDepth < maxDepth)) {
                     subResources = parseResources(reader, nextDepth,
-                            maxDepth, hasAdvancedSearch, supportedDataviews,
-                            supportedLayers);
+                            maxDepth, hasAdvancedSearch, hasAuthenicatedSearch,
+                            supportedDataviews, supportedLayers);
                 } else {
                     XmlStreamReaderUtils.skipTag(reader, ED_NS_URI,
                             "Resources", true);
@@ -1227,8 +1278,9 @@ public class ClarinFCSEndpointDescriptionParser implements
             if (resources == null) {
                 resources = new ArrayList<>();
             }
-            resources.add(new ResourceInfo(pid, title, description, institution,
-                    landingPageURI, languages, dataviews, layers, subResources));
+            resources.add(new ResourceInfo(pid, title, description,
+                    institution, landingPageURI, languages,
+                    availabilityRestriction, dataviews, layers, subResources));
         } // while
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resources");
 
@@ -1307,6 +1359,21 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
         } else {
             return null;
+        }
+    }
+
+
+    private static AvailabilityRestriction parseAvailabilityRestriction(XMLStreamReader reader)
+            throws XMLStreamException {
+        final String s = XmlStreamReaderUtils.readString(reader, true);
+        if (AVAILABILITY_RESTRICTION_AUTHONLY.equals(s)) {
+            return AvailabilityRestriction.AUTH_ONLY;
+        } else if (AVAILABILITY_RESTRICTION_PERSONALID.equals(s)) {
+            return AvailabilityRestriction.PERSONAL_IDENTIFIER;
+        } else {
+            throw new XMLStreamException("Unexpected value '" + s +
+                    "' for content in element '<AvailabilityRestriction>'",
+                    reader.getLocation());
         }
     }
 

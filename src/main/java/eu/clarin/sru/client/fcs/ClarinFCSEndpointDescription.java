@@ -406,6 +406,25 @@ public class ClarinFCSEndpointDescription implements Serializable,
      * endpoint.
      */
     public static final class ResourceInfo implements Serializable {
+
+        /**
+         * Enumeration to indicate the content encoding of a layer.
+         */
+        public enum AvailabilityRestriction {
+            /**
+             * No authentication is required.
+             */
+            NONE,
+            /**
+             * Only authentication via home institution is required.
+             */
+            AUTH_ONLY,
+            /**
+             * An additional 'userID' attribute is required for authentication.
+             */
+            PERSONAL_IDENTIFIER
+        }
+
         private static final long serialVersionUID = 1046130188435071544L;
         private final String pid;
         private final Map<String, String> title;
@@ -413,6 +432,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final Map<String, String> institution;
         private final String landingPageURI;
         private final List<String> languages;
+        private final AvailabilityRestriction availabilityRestriction;
         private final List<DataView> availableDataViews;
         private final List<Layer> availableLayers;
         private final List<ResourceInfo> subResources;
@@ -425,8 +445,9 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 Map<String, String> description,
                 Map<String, String> institution,
                 String landingPageURI,
-                List<String> languages, List<DataView> availableDataViews,
-                List<Layer> availableLayers,
+                List<String> languages,
+                AvailabilityRestriction availabilityRestriction,
+                List<DataView> availableDataViews, List<Layer> availableLayers,
                 List<ResourceInfo> subResources) {
             if (pid == null) {
                 throw new NullPointerException("pid == null");
@@ -459,6 +480,11 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 throw new IllegalArgumentException("languages is empty");
             }
             this.languages = languages;
+
+            if (availabilityRestriction == null) {
+                throw new NullPointerException("availabilityRestriction == null");
+            }
+            this.availabilityRestriction = availabilityRestriction;
 
             if (availableDataViews == null) {
                 throw new IllegalArgumentException("availableDataViews == null");
@@ -619,6 +645,27 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 }
             }
             return false;
+        }
+
+
+        /**
+         * Check, if this resource has any kind of availability restriction.
+         *
+         * @return <code>true</code> if resource declares an availability
+         *         restriction of any kind.
+         */
+        public boolean hasAvailabilityRestriction() {
+            return !AvailabilityRestriction.NONE.equals(availabilityRestriction);
+        }
+        
+        
+        /**
+         * Get the availabiliy restriction for this resource.
+         * 
+         * @return the availability restriction, or <code>null</code> if none.
+         */
+        public AvailabilityRestriction getAvailabilityRestriction() {
+            return availabilityRestriction;
         }
 
 

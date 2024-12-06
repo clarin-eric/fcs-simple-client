@@ -52,6 +52,13 @@ public final class ClarinFCSConstants {
 
 
     /**
+     * constant for Authenticated Search capability
+     */
+    public static final URI CAPABILITY_AUTHENTICATED_SEARCH =
+            URI.create("http://clarin.eu/fcs/capability/authenticated-search");
+
+
+    /**
      * constant for value "true" for extra request parameter
      * "x-fcs-endpoint-description"
      */

@@ -25,6 +25,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -79,10 +80,10 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
 
     @Override
     public String createAuthenticationHeaderValue(SRUOperation operation,
-            String endpointURI) {
+            String endpointURI, Map<String, String> context) {
         switch (operation) {
         case SEARCH_RETRIEVE:
-            String audience = authInfoProvider.getAudience(endpointURI);
+            String audience = authInfoProvider.getAudience(endpointURI, context);
             if (audience == null) {
                 audience = endpointURI;
             }
@@ -103,7 +104,7 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
                 builder.withExpiresAt(expireDate);
             }
 
-            builder.withSubject(authInfoProvider.getSubject(endpointURI));
+            builder.withSubject(authInfoProvider.getSubject(endpointURI, context));
             String token = builder.sign(algorithm);
             logger.debug("using JWT token: {}", token);
             return "Bearer " + token;
@@ -114,9 +115,9 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
 
 
     public interface AuthenticationInfoProvider {
-        public String getAudience(String endpointURI);
+        public String getAudience(String endpointURI, Map<String, String> context);
 
-        public String getSubject(String endpointURI);
+        public String getSubject(String endpointURI, Map<String, String> context);
     }
 
 

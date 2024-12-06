@@ -911,6 +911,7 @@ public class ClarinFCSEndpointDescriptionParser implements
 
     // -----------------------------------------------------------------------
 
+    @Deprecated
     private static ClarinFCSEndpointDescription parseEndpointDescription(XMLStreamReader reader, int maxDepth)
             throws XMLStreamException, SRUClientException {
         final int version = parseVersion(reader);
@@ -1118,6 +1119,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static List<ResourceInfo> parseResources(XMLStreamReader reader,
             int depth, int maxDepth, boolean hasAdvancedSearch,
             boolean hasAuthenicatedSearch, List<DataView> supportedDataviews,
@@ -1288,6 +1290,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static Map<String, String> parseI18String(XMLStreamReader reader,
             String localName, boolean required) throws XMLStreamException {
         Map<String, String> result = null;
@@ -1313,6 +1316,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static int parseVersion(XMLStreamReader reader)
             throws XMLStreamException {
         try {
@@ -1326,6 +1330,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static DeliveryPolicy parsePolicy(XMLStreamReader reader)
             throws XMLStreamException {
         final String s = XmlStreamReaderUtils.readAttributeValue(reader,
@@ -1342,6 +1347,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static ContentEncoding parseContentEncoding(XMLStreamReader reader)
             throws XMLStreamException {
         final String s = XmlStreamReaderUtils.readAttributeValue(reader,
@@ -1363,6 +1369,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    @Deprecated
     private static AvailabilityRestriction parseAvailabilityRestriction(XMLStreamReader reader)
             throws XMLStreamException {
         final String s = XmlStreamReaderUtils.readString(reader, true);

@@ -17,22 +17,16 @@
 package eu.clarin.sru.client.auth;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +53,16 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
             AuthenticationInfoProvider authInfoPovider, String issuer,
             boolean withTokenIds, boolean withNotBefore, long expireTokenTime,
             Algorithm algorithm) {
+        if (authInfoPovider == null) {
+            throw new IllegalArgumentException("authInfoPovider == null");
+        }
+        if (issuer == null) {
+            throw new IllegalArgumentException("issuer == null");
+        }
+        if (algorithm == null) {
+            throw new IllegalArgumentException("algorithm == null");
+        }
+
         this.authInfoProvider = authInfoPovider;
         this.issuer = issuer;
 
@@ -179,9 +183,9 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
         public Builder withKeyPair(File publicKeyFile, File privateKeyFile) {
             try {
                 logger.debug("load public key from file '{}'", publicKeyFile);
-                RSAPublicKey publicKey = readPublicKey(publicKeyFile);
+                RSAPublicKey publicKey = KeyReaderUtils.readPublicKey(publicKeyFile);
                 logger.debug("load private key from file '{}'", privateKeyFile);
-                RSAPrivateKey privateKey = readPrivateKey(privateKeyFile);
+                RSAPrivateKey privateKey = KeyReaderUtils.readPrivateKey(privateKeyFile);
 
                 algorithm = Algorithm.RSA256(publicKey, privateKey);
                 return this;
@@ -189,6 +193,24 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
                 throw new IllegalArgumentException("error reading key pair", e);
             }
         }
+
+
+        public Builder withKeyPairStrings(String publicKeyContent, String privateKeyContent) {
+            try {
+                logger.debug("load public key from string", publicKeyContent);
+                RSAPublicKey publicKey = KeyReaderUtils.readPublicKey(publicKeyContent);
+                logger.debug("load private key from string", privateKeyContent);
+                RSAPrivateKey privateKey = KeyReaderUtils.readPrivateKey(privateKeyContent);
+
+                algorithm = Algorithm.RSA256(publicKey, privateKey);
+                return this;
+            } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+                throw new IllegalArgumentException("error reading key pair", e);
+            }
+        }
+
+
+        // TODO: with private key (derive public key)
 
 
         public ClarinFCSRequestAuthenticator build() {
@@ -205,33 +227,5 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
             return new Builder();
         }
     } // inner class Builder
-
-
-    private static RSAPublicKey readPublicKey(File file) throws NoSuchAlgorithmException, IOException, InvalidKeySpecException {
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-
-        try (FileReader keyReader = new FileReader(file);
-          PemReader pemReader = new PemReader(keyReader)) {
-
-            PemObject pemObject = pemReader.readPemObject();
-            byte[] content = pemObject.getContent();
-            X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(content);
-            return (RSAPublicKey) factory.generatePublic(pubKeySpec);
-        }
-    }
-
-
-    private static RSAPrivateKey readPrivateKey(File file) throws NoSuchAlgorithmException, IOException, InvalidKeySpecException {
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-
-        try (FileReader keyReader = new FileReader(file);
-          PemReader pemReader = new PemReader(keyReader)) {
-
-            PemObject pemObject = pemReader.readPemObject();
-            byte[] content = pemObject.getContent();
-            PKCS8EncodedKeySpec privKeySpec = new PKCS8EncodedKeySpec(content);
-            return (RSAPrivateKey) factory.generatePrivate(privKeySpec);
-        }
-    }
 
 }

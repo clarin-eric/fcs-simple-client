@@ -174,7 +174,38 @@ public class ClarinFCSEndpointVersionAutodetector {
             }
             return version;
         } catch (SRUClientException e) {
-            throw e;
+            logger.warn("First version detection failed, probably due to invalid SRU 1.2"
+                    + " explain response", e);
+            /*
+             * Test for lastest FCS version (FCS 2.0) since newer endpoints might not
+             * correctly implement SRU 1.2 handling and only target SRU 2.0.
+             * So, if SRU 1.2 fails due to unexpected namespaces, let's try to check with
+             * FCS 2.0 with SRU 2.0 first.
+             */
+            try {
+                logger.debug("performing SRU 2.0 explain request to endpoint \"{}\""
+                        + " (after SRU 1.2 (?) explain request failed)",
+                        endpointURI);
+                SRUExplainRequest request = new SRUExplainRequest(endpointURI);
+                request.setStrictMode(false);
+                request.setVersion(SRUVersion.VERSION_2_0);
+                request.setExtraRequestData(
+                        ClarinFCSConstants.X_FCS_ENDPOINT_DESCRIPTION,
+                        ClarinFCSConstants.TRUE);
+                request.setParseRecordDataEnabled(true);
+                SRUExplainResponse response = client.explain(request);
+                AutodetectClarinFCSEndpointDescription ed =
+                        response.getFirstExtraResponseData(
+                                AutodetectClarinFCSEndpointDescription.class);
+                if (ed != null) {
+                    if (ed.getVersion() == 2) {
+                        version = AutodetectedFCSVersion.FCS_2_0;
+                    }
+                }
+                return version;
+            } catch (SRUClientException e2) {
+                throw e2;
+            }
         }
     }
 

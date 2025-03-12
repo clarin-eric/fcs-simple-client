@@ -40,12 +40,13 @@ public class ClarinFCSEndpointDescription implements Serializable,
     private final List<URI> capabilites;
     private final List<DataView> supportedDataViews;
     private final List<Layer> supportedLayers;
+    private final List<LexField> supportedLexFields;
     private final List<ResourceInfo> resources;
 
 
     ClarinFCSEndpointDescription(int version, List<URI> capabilites,
             List<DataView> supportedDataViews, List<Layer> supportedLayers,
-            List<ResourceInfo> resources) {
+            List<LexField> supportedLexFields, List<ResourceInfo> resources) {
         this.version = version;
         if ((capabilites != null) && !capabilites.isEmpty()) {
             this.capabilites = Collections.unmodifiableList(capabilites);
@@ -63,6 +64,12 @@ public class ClarinFCSEndpointDescription implements Serializable,
                     Collections.unmodifiableList(supportedLayers);
         } else {
             this.supportedLayers = Collections.emptyList();
+        }
+        if ((supportedLexFields != null) && !supportedLexFields.isEmpty()) {
+            this.supportedLexFields =
+                    Collections.unmodifiableList(supportedLexFields);
+        } else {
+            this.supportedLexFields = Collections.emptyList();
         }
         if ((resources != null) && !resources.isEmpty()) {
             this.resources = Collections.unmodifiableList(resources);
@@ -111,12 +118,22 @@ public class ClarinFCSEndpointDescription implements Serializable,
 
 
     /**
-     * Get the list of data views supported by this endpoint.
+     * Get the list of advanced data view layers supported by this endpoint.
      *
-     * @return the list of data views supported by this endpoint
+     * @return the list of advanced data view layers supported by this endpoint
      */
     public List<Layer> getSupportedLayers() {
         return supportedLayers;
+    }
+
+
+    /**
+     * Get the list of lex data view fields supported by this endpoint.
+     *
+     * @return the list of lex data view fields supported by this endpoint
+     */
+    public List<LexField> getSupportedLexFields() {
+        return supportedLexFields;
     }
 
 
@@ -244,6 +261,10 @@ public class ClarinFCSEndpointDescription implements Serializable,
     } // class DataView
 
 
+    /**
+     * This class implements a description of supported layers for resources by the
+     * endpoint.
+     */
     public static final class Layer implements Serializable {
         /**
          * Enumeration to indicate the content encoding of a layer.
@@ -402,6 +423,70 @@ public class ClarinFCSEndpointDescription implements Serializable,
 
 
     /**
+     * This class implements a description of supported fields for lexical resources
+     * by the endpoint.
+     */
+    public static final class LexField implements Serializable {
+        private static final long serialVersionUID = -531470690771620715L;
+        private final String identifier;
+        private final String fieldType;
+
+        /**
+         * Constructor. <em>Internal use only!</em>
+         */
+        LexField(String identifier, String fieldType) {
+            if (identifier == null) {
+                throw new NullPointerException("identifier == null");
+            }
+            if (identifier.isEmpty()) {
+                throw new IllegalArgumentException("identifier is empty");
+            }
+            this.identifier = identifier;
+
+            if (fieldType == null) {
+                throw new NullPointerException("fieldType == null");
+            }
+            if (fieldType.isEmpty()) {
+                throw new IllegalArgumentException("fieldType is empty");
+            }
+            this.fieldType = fieldType;
+        }
+
+
+        /**
+         * Get the identifier of this layer
+         *
+         * @return the identifier of the layer
+         */
+        public String getIdentifier() {
+            return identifier;
+        }
+
+
+        /**
+         * Get the field type of this field
+         *
+         * @return the field type of the field
+         */
+        public String getFieldType() {
+            return fieldType;
+        }
+
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(getClass().getSimpleName());
+            sb.append("[");
+            sb.append("identifier=").append(identifier);
+            sb.append(", field-type=").append(fieldType);
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+
+
+    /**
      * This class implements a description of a resource available at an
      * endpoint.
      */
@@ -435,6 +520,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final AvailabilityRestriction availabilityRestriction;
         private final List<DataView> availableDataViews;
         private final List<Layer> availableLayers;
+        private final List<LexField> availableLexFields;
         private final List<ResourceInfo> subResources;
 
 
@@ -448,7 +534,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 List<String> languages,
                 AvailabilityRestriction availabilityRestriction,
                 List<DataView> availableDataViews, List<Layer> availableLayers,
-                List<ResourceInfo> subResources) {
+                List<LexField> availableLexFields, List<ResourceInfo> subResources) {
             if (pid == null) {
                 throw new NullPointerException("pid == null");
             }
@@ -497,6 +583,13 @@ public class ClarinFCSEndpointDescription implements Serializable,
                         Collections.unmodifiableList(availableLayers);
             } else {
                 this.availableLayers = Collections.emptyList();
+            }
+
+            if ((availableLexFields != null) && !availableLexFields.isEmpty()) {
+                this.availableLexFields =
+                        Collections.unmodifiableList(availableLexFields);
+            } else {
+                this.availableLexFields = Collections.emptyList();
             }
 
             if ((subResources != null) && !subResources.isEmpty()) {
@@ -694,10 +787,21 @@ public class ClarinFCSEndpointDescription implements Serializable,
          * (ADV-FCS) Get the list of layers that are available for this
          * resource.
          *
-         * @return the list of layers views available for this resource
+         * @return the list of layers available for this resource
          */
         public List<Layer> getAvailableLayers() {
             return availableLayers;
+        }
+
+
+        /**
+         * (Lex-FCS) Get the list of lex fields that are available for this
+         * resource.
+         *
+         * @return the list of lex fields available for this resource
+         */
+        public List<LexField> getAvailableLexFields() {
+            return availableLexFields;
         }
     } // class ResourceInfo
 

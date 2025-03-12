@@ -51,6 +51,7 @@ import eu.clarin.sru.client.XmlStreamReaderUtils;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView.DeliveryPolicy;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer;
+import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.LexField;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer.ContentEncoding;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ResourceInfo.AvailabilityRestriction;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ResourceInfo;
@@ -83,6 +84,7 @@ public class ClarinFCSEndpointDescriptionParser implements
     private static final String CAPABILITY_PREFIX = "http://clarin.eu/fcs/capability/";
     private static final String MIMETYPE_HITS_DATAVIEW = "application/x-clarin-fcs-hits+xml";
     private static final String MIMETYPE_ADV_DATAVIEW = "application/x-clarin-fcs-adv+xml";
+    private static final String MIMETYPE_LEX_DATAVIEW = "application/x-clarin-fcs-lex+xml";
     private static final String LANG_EN = "en";
     private static final String POLICY_SEND_DEFAULT = "send-by-default";
     private static final String POLICY_NEED_REQUEST = "need-to-request";
@@ -265,7 +267,7 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
         logger.debug("Endpoint description version is {}", version);
 
-        // capabilities
+        // Capabilities
         List<URI> capabilities = parseCapabilities(xpath, doc, version);
         logger.debug("CAP: {}", capabilities);
 
@@ -280,18 +282,22 @@ public class ClarinFCSEndpointDescriptionParser implements
         List<Layer> supportedLayers = parseSupportedLayers(xpath, doc, capabilities, xml_ids);
         logger.debug("L: {}", supportedLayers);
 
+        // SupportedLexFields
+        List<LexField> supportedLexFields = parseSupportedLexFields(xpath, doc, capabilities, xml_ids);
+        logger.debug("F: {}", supportedLexFields);
+
         // Resources
         exp = xpath.compile("/ed:EndpointDescription/ed:Resources/ed:Resource");
         NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
         final Set<String> pids = new HashSet<>();
         List<ResourceInfo> resources = parseResources(xpath, list, 0, maxDepth, pids,
-                supportedDataViews, supportedLayers, version, capabilities);
+                supportedDataViews, supportedLayers, supportedLexFields, version, capabilities);
         if ((resources == null) || resources.isEmpty()) {
             throw new SRUClientException("No resources where defined in endpoint description");
         }
 
         return new ClarinFCSEndpointDescription(version, capabilities,
-                supportedDataViews, supportedLayers, resources);
+                supportedDataViews, supportedLayers, supportedLexFields, resources);
     }
 
 
@@ -414,14 +420,18 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
 
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
         boolean hasHitsView = false;
         boolean hasAdvView = false;
+        boolean hasLexView = false;
         if (supportedDataViews != null) {
             for (DataView dataView : supportedDataViews) {
                 if (MIMETYPE_HITS_DATAVIEW.equals(dataView.getMimeType())) {
                     hasHitsView = true;
                 } else if (MIMETYPE_ADV_DATAVIEW.equals(dataView.getMimeType())) {
                     hasAdvView = true;
+                } else if (MIMETYPE_LEX_DATAVIEW.equals(dataView.getMimeType())) {
+                    hasLexView = true;
                 }
             }
         }
@@ -435,6 +445,11 @@ public class ClarinFCSEndpointDescriptionParser implements
             throw new SRUClientException("Endpoint claimes to support " +
                     "Advanced FCS but does not declare Advanced Data View (" +
                     MIMETYPE_ADV_DATAVIEW + ") in <SupportedDataViews>");
+        }
+        if (hasLexicalSearch && !hasLexView) {
+            throw new SRUClientException("Endpoint claimes to support " +
+                    "Lexical FCS but does not declare Lex Data View (" +
+                    MIMETYPE_LEX_DATAVIEW + ") in <SupportedDataViews>");
         }
 
         return supportedDataViews;
@@ -554,11 +569,78 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    private static List<LexField> parseSupportedLexFields(XPath xpath, Document doc,
+            List<URI> capabilities, Set<String> xml_ids)
+            throws SRUClientException, XPathExpressionException {
+        List<LexField> supportedLexFields = null;
+        XPathExpression exp = xpath.compile("//ed:SupportedLexFields/ed:SupportedLexField");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            logger.debug("parsing supported layers");
+            for (int i = 0; i < list.getLength(); i++) {
+                Element item = (Element) list.item(i);
+                String id = getAttribute(item, "id");
+                if (id == null) {
+                    throw new SRUClientException("Element <SupportedLexField> "
+                            + "must have a proper 'id' attribute");
+                }
+
+                if (xml_ids.contains(id)) {
+                    throw new SRUClientException("The value of attribute " +
+                            "'id' of element <SupportedLexField> must be " +
+                            "unique: " + id);
+                }
+                xml_ids.add(id);
+
+                String type = cleanString(item.getTextContent());
+                if ((type != null) && !type.isEmpty()) {
+                    // sanity check on layer types
+                    try {
+                        DataViewLex.FieldType.fromString(type);
+                    } catch (IllegalArgumentException iae) {
+                        // TODO: check for "x-" extensible type definition?
+                        if (!type.startsWith("x-")) {
+                            logger.debug("lex field type '{}' is not defined by specification", type);
+                        }
+                    }
+                } else {
+                    throw new SRUClientException("Element <SupportedLexField> " +
+                            "does not define a proper field type");
+                }
+
+                if (supportedLexFields == null) {
+                    supportedLexFields = new ArrayList<>(list.getLength());
+                }
+                supportedLexFields.add(new LexField(id, type));
+            }
+        }
+
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+        if (hasLexicalSearch && (supportedLexFields == null)) {
+            throw new SRUClientException("Endpoint must declare " +
+                    "all supported lex fields (<SupportedLexFields>) if they " +
+                    "provide the 'lex-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    ") capability");
+        }
+        if ((supportedLexFields != null) && !hasLexicalSearch) {
+                logger.warn("Endpoint description has <SupportedLexFields> but " +
+                        "does not indicate support for Lexical Search using " +
+                        "the capability ({})!",
+                        ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+        } // necessary
+
+        return supportedLexFields;
+    }
+
+
     private static List<ResourceInfo> parseResources(XPath xpath, NodeList nodes,
             int depth, int maxDepth, Set<String> pids, List<DataView> supportedDataViews,
-            List<Layer> supportedLayers, int version, List<URI> capabilities)
+            List<Layer> supportedLayers, List<LexField> supportedLexFields, int version,
+            List<URI> capabilities)
                     throws SRUClientException, XPathExpressionException {
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
         final boolean hasAuthenticatedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH);
         List<ResourceInfo> ris = null;
 
@@ -573,6 +655,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             AvailabilityRestriction availabilityRestriction = AvailabilityRestriction.NONE;
             List<DataView> availableDataViews = null;
             List<Layer> availableLayers = null;
+            List<LexField> availableLexFields = null;
             List<ResourceInfo> sub = null;
 
             pid = getAttribute(node, "pid");
@@ -805,7 +888,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                 if ((refs == null) || (refs.length < 1)) {
                     throw new SRUClientException("Attribute 'ref' on element " +
                             "<AvailableLayers> must contain a whitespace " +
-                            "seperated list of data view references");
+                            "seperated list of layer references");
                 }
 
                 for (String ref2 : refs) {
@@ -833,13 +916,53 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             logger.debug("Layers: {}", availableLayers);
 
+            exp = xpath.compile("ed:AvailableLexFields");
+            n = (Node) exp.evaluate(node, XPathConstants.NODE);
+            if ((n != null) && (n instanceof Element)) {
+                String ref = getAttribute((Element) n, "ref");
+                if (ref == null) {
+                    throw new SRUClientException("Element <AvailableLexFields> " +
+                            "must have a 'ref' attribute");
+                }
+                String[] refs = ref.split("\\s+");
+                if ((refs == null) || (refs.length < 1)) {
+                    throw new SRUClientException("Attribute 'ref' on element " +
+                            "<AvailableLexFields> must contain a whitespace " +
+                            "seperated list of lex field references");
+                }
+
+                for (String ref2 : refs) {
+                    LexField lexField = null;
+                    for (LexField lf : supportedLexFields) {
+                        if (ref2.equals(lf.getIdentifier())) {
+                            lexField = lf;
+                            break;
+                        }
+                    }
+                    if (lexField != null) {
+                        if (availableLexFields == null) {
+                            availableLexFields = new ArrayList<>();
+                        }
+                        availableLexFields.add(lexField);
+                    } else {
+                        throw new SRUClientException("A lex field with identifier '" + 
+                                ref2 + "' was not defined " + "in <SupportedLexFields>");
+                    }
+                }
+            } else {
+                if (hasLexicalSearch) {
+                    logger.debug("No <SupportedLexFields> for resource '{}'", pid);
+                }
+            }
+            logger.debug("LexFields: {}", availableLexFields);
+
             final int nextDepth = depth + 1;
             if ((maxDepth == INFINITE_MAX_DEPTH) || (nextDepth < maxDepth)) {
                 exp = xpath.compile("ed:Resources/ed:Resource");
                 list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
                 if ((list != null) && (list.getLength() > 0)) {
                     sub = parseResources(xpath, list, depth + 1, maxDepth, pids, supportedDataViews,
-                            supportedLayers, version, capabilities);
+                            supportedLayers, supportedLexFields, version, capabilities);
                 }
             }
 
@@ -853,9 +976,14 @@ public class ClarinFCSEndpointDescriptionParser implements
                         "includes information about <AvailableLayers> for " +
                         "resource with pid '{}'", pid);
             }
+            if ((availableLexFields != null) && (version < 1)) {
+                logger.warn("Endpoint claims to support FCS 1.0, but " +
+                        "includes information about <AvailableLexFields> for " +
+                        "resource with pid '{}'", pid);
+            }
             ris.add(new ResourceInfo(pid, titles, descrs, insts, link, langs,
                     availabilityRestriction, availableDataViews,
-                    availableLayers, sub));
+                    availableLayers, availableLexFields, sub));
         }
 
         return ris;
@@ -957,6 +1085,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                 .indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
         final boolean hasAdvancedSearch = (capabilities
                 .indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        final boolean hasLexicalSearch = (capabilities
+                .indexOf(ClarinFCSConstants.CAPABILITY_LEX_SEARCH) != -1);
         final boolean hasAuthenicatedSearch = (capabilities
                 .indexOf(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH) != -1);
         if (!hasBasicSearch) {
@@ -1095,10 +1225,53 @@ public class ClarinFCSEndpointDescriptionParser implements
                     ") capability");
         }
 
+        // SupportedLexFields
+        List<LexField> supportedLexFields = null;
+        if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                "SupportedLexFields", false)) {
+            while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                    "SupportedLexField", (supportedLayers == null), true)) {
+                final String id = XmlStreamReaderUtils.readAttributeValue(reader, null, "id");
+                if ((id.indexOf(' ') != -1) || (id.indexOf(',') != -1) ||
+                        (id.indexOf(';') != -1)) {
+                    throw new XMLStreamException("Value of attribute 'id' on " +
+                            "element '<SupportedLexField>' may not contain the " +
+                            "characters ',' (comma) or ';' (semicolon) " +
+                            "or ' ' (space)", reader.getLocation());
+                }
+                reader.next(); // consume element
+                final String fieldType = XmlStreamReaderUtils.readString(reader, true);
+                logger.debug("lex field: id={}, field={}", id, fieldType);
+
+                XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "SupportedLexField");
+                if (supportedLexFields == null) {
+                    supportedLexFields = new ArrayList<>();
+                }
+                supportedLexFields.add(new LexField(id, fieldType));
+            } // while
+            XmlStreamReaderUtils.readEnd(reader, ED_NS_URI,
+                    "SupportedLexFields", true);
+        }
+        if (hasLexicalSearch && (supportedLexFields == null)) {
+            throw new SRUClientException("Endpoint must declare " +
+                    "all supported lex fields (<SupportedLexFields>) " +
+                    "if they provide the 'lex-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    ") capability");
+        }
+        if (!hasLexicalSearch && (supportedLexFields != null)) {
+            // XXX: hard error?!
+            logger.warn("Endpoint superflously declared supported " +
+                    "lex fields (<SupportedLexFields> without providing " +
+                    "the 'lex-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    ") capability");
+        }
+
         // Resources
         final List<ResourceInfo> resources = parseResources(reader, 0, maxDepth,
-                hasAdvancedSearch, hasAuthenicatedSearch, supportedDataViews,
-                supportedLayers);
+                hasAdvancedSearch, hasLexicalSearch, hasAuthenicatedSearch,
+                supportedDataViews, supportedLayers, supportedLexFields);
 
         // skip over extensions
         while (!XmlStreamReaderUtils.peekEnd(reader,
@@ -1115,15 +1288,16 @@ public class ClarinFCSEndpointDescriptionParser implements
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "EndpointDescription");
 
         return new ClarinFCSEndpointDescription(version, capabilities,
-                supportedDataViews, supportedLayers, resources);
+                supportedDataViews, supportedLayers, supportedLexFields, resources);
     }
 
 
     @Deprecated
     private static List<ResourceInfo> parseResources(XMLStreamReader reader,
             int depth, int maxDepth, boolean hasAdvancedSearch,
-            boolean hasAuthenicatedSearch, List<DataView> supportedDataviews,
-            List<Layer> supportedLayers)
+            boolean hasLexicalSearch, boolean hasAuthenicatedSearch,
+            List<DataView> supportedDataviews, List<Layer> supportedLayers,
+            List<LexField> supportedLexFields)
             throws XMLStreamException {
         List<ResourceInfo> resources = null;
 
@@ -1135,6 +1309,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             reader.next(); // consume start tag
 
             logger.debug("hasAdvSearch: {}", hasAdvancedSearch);
+            logger.debug("hasLexSearch: {}", hasLexicalSearch);
+            logger.debug("hasAuthSearch: {}", hasAuthenicatedSearch);
 
             logger.debug("parsing resource with pid = {}", pid);
 
@@ -1248,6 +1424,45 @@ public class ClarinFCSEndpointDescriptionParser implements
                         ")", reader.getLocation());
             }
 
+            // AvailableLexFields
+            List<LexField> lexFields = null;
+            if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                    "AvailableLexFields", false, true)) {
+                final String ls = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "ref", true);
+                reader.next(); // consume start tag
+                XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "AvailableLexFields");
+                for (String l : ls.split("\\s+")) {
+                    boolean found = false;
+                    if (supportedLexFields != null) {
+                        for (LexField lexField : supportedLexFields) {
+                            if (lexField.getIdentifier().equals(l)) {
+                                found = true;
+                                if (lexFields == null) {
+                                    lexFields = new ArrayList<>();
+                                }
+                                lexFields.add(lexField);
+                                break;
+                            }
+                        } // for
+                    }
+                    if (!found) {
+                        throw new XMLStreamException("LexField with id '" + l +
+                                "' was not declared in <SupportedLexFields>",
+                                reader.getLocation());
+                    }
+                } // for
+                logger.debug("LexFields: {}", layers);
+            }
+            if (hasLexicalSearch && (layers == null)) {
+                throw new XMLStreamException("Endpoint must declare " +
+                        "all available lex fields (<AvailableLexFields>) " +
+                        "on a resource, if they provide the 'lex-search' (" +
+                        ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                        ") capability. Offending resource id pid=" + pid +
+                        ")", reader.getLocation());
+            }
+
             List<ResourceInfo> subResources = null;
             if (XmlStreamReaderUtils.peekStart(reader,
                     ED_NS_URI, "Resources")) {
@@ -1255,8 +1470,9 @@ public class ClarinFCSEndpointDescriptionParser implements
                 if ((maxDepth == INFINITE_MAX_DEPTH) ||
                         (nextDepth < maxDepth)) {
                     subResources = parseResources(reader, nextDepth,
-                            maxDepth, hasAdvancedSearch, hasAuthenicatedSearch,
-                            supportedDataviews, supportedLayers);
+                            maxDepth, hasAdvancedSearch, hasLexicalSearch,
+                            hasAuthenicatedSearch, supportedDataviews,
+                            supportedLayers, supportedLexFields);
                 } else {
                     XmlStreamReaderUtils.skipTag(reader, ED_NS_URI,
                             "Resources", true);
@@ -1282,7 +1498,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             resources.add(new ResourceInfo(pid, title, description,
                     institution, landingPageURI, languages,
-                    availabilityRestriction, dataviews, layers, subResources));
+                    availabilityRestriction, dataviews, layers, lexFields,
+                    subResources));
         } // while
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resources");
 

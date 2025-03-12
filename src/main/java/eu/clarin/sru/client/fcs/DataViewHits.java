@@ -26,7 +26,7 @@ public class DataViewHits extends DataView {
     public static final String TYPE = "application/x-clarin-fcs-hits+xml";
     private final String text;
     private final int[] offsets;
-    private final int max_offset;
+    protected final int max_offset;
 
 
     /**

@@ -52,6 +52,13 @@ public final class ClarinFCSConstants {
 
 
     /**
+     * constant for Lexical Search capability
+     */
+    public static final URI CAPABILITY_LEX_SEARCH =
+            URI.create("http://clarin.eu/fcs/capability/lex-search");
+
+
+    /**
      * constant for Authenticated Search capability
      */
     public static final URI CAPABILITY_AUTHENTICATED_SEARCH =

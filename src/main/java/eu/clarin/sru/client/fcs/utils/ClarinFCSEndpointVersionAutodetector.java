@@ -170,6 +170,7 @@ public class ClarinFCSEndpointVersionAutodetector {
                     if (ed.getVersion() == 2) {
                         version = AutodetectedFCSVersion.FCS_2_0;
                     }
+                    // NOTE: SRU 2.0 should really not respond with version=1 ?
                 }
             }
             return version;

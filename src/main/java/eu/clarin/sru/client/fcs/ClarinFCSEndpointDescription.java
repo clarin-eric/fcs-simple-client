@@ -514,7 +514,6 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final String name;
         private final String description;
         private final URI descriptionUrl;
-        private final String fontFamily;
         private final String license; // SPDX or custom
         private final List<URI> licenseUrls;
         private final List<DownloadUrl> downloadUrls;
@@ -529,8 +528,6 @@ public class ClarinFCSEndpointDescription implements Serializable,
          *                       applicable
          * @param descriptionUrl the URL to a description of the font or
          *                       <code>null</code> if not applicable
-         * @param fontFamily     the font-family of the font or <code>null</code> if not
-         *                       applicable
          * @param license        the license for using the font (in SPDX format; may
          *                       specify custom licenses, too, then use the
          *                       <code>licenseUrls</code> to provide the actual text of
@@ -541,8 +538,8 @@ public class ClarinFCSEndpointDescription implements Serializable,
          *                       files
          */
         Font(String identifier, String name, String description,
-                URI descriptionUrl, String fontFamily, String license,
-                List<URI> licenseUrls, List<DownloadUrl> downloadUrls) {
+                URI descriptionUrl, String license, List<URI> licenseUrls,
+                List<DownloadUrl> downloadUrls) {
             if (identifier == null) {
                 throw new NullPointerException("identifier == null");
             }
@@ -562,8 +559,6 @@ public class ClarinFCSEndpointDescription implements Serializable,
             // XXX: optional?
             this.description = description;
             this.descriptionUrl = descriptionUrl;
-
-            this.fontFamily = fontFamily;
 
             if (license == null) {
                 throw new NullPointerException("license == null");
@@ -631,17 +626,6 @@ public class ClarinFCSEndpointDescription implements Serializable,
 
 
         /**
-         * Get the font-family name of this font.
-         *
-         * @return a string with the font-family for this font or <code>null</code> if
-         *         not applicable
-         */
-        public String getFontFamily() {
-            return fontFamily;
-        }
-
-
-        /**
          * Get the SPDX license description of this font.
          *
          * @return a string with an SPDX license expression
@@ -679,22 +663,25 @@ public class ClarinFCSEndpointDescription implements Serializable,
             private static final long serialVersionUID = 822716575768575434L;
             private final URI url;
             private final String variant;
-
+            private final String fontFamily;
 
             /**
              * Constructor.
              *
-             * @param url     the URL to download the font file
-             * @param variant the font variant (e.g., regular, bold, ...),
-             *                or <code>null</code> if not applicable
+             * @param url        the URL to download the font file
+             * @param variant    the font variant (e.g., regular, bold, ...),
+             *                   or <code>null</code> if not applicable
+             * @param fontFamily the font-family of the font or <code>null</code> if not
+             *                   applicable
              */
-            DownloadUrl(URI url, String variant) {
+            DownloadUrl(URI url, String variant, String fontFamily) {
                 if (url == null) {
                     throw new NullPointerException("url == null");
                 }
                 this.url = url;
 
                 this.variant = variant;
+                this.fontFamily = fontFamily;
             }
 
 
@@ -715,6 +702,17 @@ public class ClarinFCSEndpointDescription implements Serializable,
              */
             public String getVariant() {
                 return variant;
+            }
+
+            
+            /**
+             * Get the font-family name of this font.
+             *
+             * @return a string with the font-family for this font or <code>null</code> if
+             *         not applicable
+             */
+            public String getFontFamily() {
+                return fontFamily;
             }
         }
     }

@@ -689,8 +689,6 @@ public class ClarinFCSEndpointDescriptionParser implements
                     descriptionUrl = URI.create(descriptionUrlRaw);
                 }
 
-                String fontFamily = getAttribute(item, "font-family");
-
                 String license = getAttribute(item, "license");
                 if (license == null) {
                     throw new SRUClientException("Element <RequiredFont> "
@@ -710,16 +708,17 @@ public class ClarinFCSEndpointDescriptionParser implements
                 }
 
                 List<DownloadUrl> downloadUrls = null;
-                exp = xpath.compile("//ed:DownloadURL");
+                exp = xpath.compile(".//ed:DownloadURL");
                 NodeList dlList = (NodeList) exp.evaluate(item, XPathConstants.NODESET);
                 if ((dlList != null) && (dlList.getLength() > 0)) {
                     downloadUrls = new ArrayList<>(dlList.getLength());
                     for (int j = 0; j < dlList.getLength(); j++) {
-                        Element dlItem = (Element) list.item(j);
-                        String variant = getAttribute(item, "variant");
+                        Element dlItem = (Element) dlList.item(j);
+                        String variant = getAttribute(dlItem, "variant");
+                        String fontFamily = getAttribute(dlItem, "font-family");
                         String urlRaw = cleanString(dlItem.getTextContent());
                         URI downloadUrl = URI.create(urlRaw);
-                        downloadUrls.add(new DownloadUrl(downloadUrl, variant));
+                        downloadUrls.add(new DownloadUrl(downloadUrl, variant, fontFamily));
                     }
                 }
                 if (downloadUrls == null) {
@@ -732,7 +731,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     requiredFonts = new ArrayList<>(list.getLength());
                 }
                 requiredFonts.add(new Font(id, name, description, descriptionUrl,
-                        fontFamily, license, licenseUrls, downloadUrls));
+                        license, licenseUrls, downloadUrls));
             }
         }
 
@@ -1444,7 +1443,6 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                 }
 
-                final String fontFamily = XmlStreamReaderUtils.readAttributeValue(reader, null, "font-family");
                 final String license = XmlStreamReaderUtils.readAttributeValue(reader, null, "license", true);
 
                 final List<URI> licenseUrls;
@@ -1473,6 +1471,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                 while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
                     "DownloadURL", true, true)) {
                     final String variant = XmlStreamReaderUtils.readAttributeValue(reader, null, "variant");
+                    final String fontFamily = XmlStreamReaderUtils.readAttributeValue(reader, null, "font-family");
                     reader.next(); // consume element
                     final String downloadUrlRaw = XmlStreamReaderUtils.readString(reader, true);
                     final URI downloadUrl;
@@ -1485,7 +1484,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     }
                     logger.debug("font download: url={}, variant={}", downloadUrl, variant);
                     XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "DownloadURL");
-                    downloadUrls.add(new DownloadUrl(downloadUrl, variant));
+                    downloadUrls.add(new DownloadUrl(downloadUrl, variant, fontFamily));
                 }
 
                 XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "RequiredFont");
@@ -1493,7 +1492,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     requiredFonts = new ArrayList<>();
                 }
                 requiredFonts.add(new Font(id, name, description, descriptionUrl,
-                        fontFamily, license, licenseUrls, downloadUrls));
+                        license, licenseUrls, downloadUrls));
             } // while
             XmlStreamReaderUtils.readEnd(reader, ED_NS_URI,
                     "RequiredFonts", true);

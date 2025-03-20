@@ -49,6 +49,8 @@ import eu.clarin.sru.client.SRUExtraResponseData;
 import eu.clarin.sru.client.SRUExtraResponseDataParser;
 import eu.clarin.sru.client.XmlStreamReaderUtils;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView;
+import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Font;
+import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Font.DownloadUrl;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView.DeliveryPolicy;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.LexField;
@@ -286,18 +288,23 @@ public class ClarinFCSEndpointDescriptionParser implements
         List<LexField> supportedLexFields = parseSupportedLexFields(xpath, doc, capabilities, xml_ids);
         logger.debug("F: {}", supportedLexFields);
 
+        // RequiredFonts
+        List<Font> requiredFonts = parseRequiredFonts(xpath, doc, xml_ids);
+        logger.debug("FONT: {}", requiredFonts);
+
         // Resources
         exp = xpath.compile("/ed:EndpointDescription/ed:Resources/ed:Resource");
         NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
         final Set<String> pids = new HashSet<>();
         List<ResourceInfo> resources = parseResources(xpath, list, 0, maxDepth, pids,
-                supportedDataViews, supportedLayers, supportedLexFields, version, capabilities);
+                supportedDataViews, supportedLayers, supportedLexFields, requiredFonts,
+                version, capabilities);
         if ((resources == null) || resources.isEmpty()) {
             throw new SRUClientException("No resources where defined in endpoint description");
         }
 
         return new ClarinFCSEndpointDescription(version, capabilities,
-                supportedDataViews, supportedLayers, supportedLexFields, resources);
+                supportedDataViews, supportedLayers, supportedLexFields, requiredFonts, resources);
     }
 
 
@@ -645,10 +652,98 @@ public class ClarinFCSEndpointDescriptionParser implements
     }
 
 
+    private static List<Font> parseRequiredFonts(XPath xpath, Document doc,
+            Set<String> xml_ids)
+            throws SRUClientException, XPathExpressionException {
+        List<Font> requiredFonts = null;
+        XPathExpression exp = xpath.compile("//ed:RequiredFonts/ed:RequiredFont");
+        NodeList list = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            logger.debug("parsing required fonts");
+            for (int i = 0; i < list.getLength(); i++) {
+                Element item = (Element) list.item(i);
+                String id = getAttribute(item, "id");
+                if (id == null) {
+                    throw new SRUClientException("Element <RequiredFont> "
+                            + "must have a proper 'id' attribute");
+                }
+
+                if (xml_ids.contains(id)) {
+                    throw new SRUClientException("The value of attribute " +
+                            "'id' of element <RequiredFont> must be " +
+                            "unique: " + id);
+                }
+                xml_ids.add(id);
+
+                String name = getAttribute(item, "name");
+                if (name == null) {
+                    throw new SRUClientException("Element <RequiredFont> "
+                            + "must have a proper 'name' attribute");
+                }
+
+                String description = getAttribute(item, "description");
+
+                String descriptionUrlRaw = getAttribute(item, "description-url");
+                URI descriptionUrl = null;
+                if (descriptionUrlRaw != null) {
+                    descriptionUrl = URI.create(descriptionUrlRaw);
+                }
+
+                String fontFamily = getAttribute(item, "font-family");
+
+                String license = getAttribute(item, "license");
+                if (license == null) {
+                    throw new SRUClientException("Element <RequiredFont> "
+                            + "must have a proper 'license' attribute");
+                }
+
+                List<URI> licenseUrls = null;
+                String licenseUrlsRaw = getAttribute(item, "license-urls");
+                if (licenseUrlsRaw != null) {
+                    String[] rawUrls = licenseUrlsRaw.split("\\s+");
+                    if ((rawUrls != null) && (rawUrls.length > 1)) {
+                        licenseUrls = new ArrayList<>();
+                        for (String rawUrl : rawUrls) {
+                            licenseUrls.add(URI.create(rawUrl));
+                        }
+                    }
+                }
+
+                List<DownloadUrl> downloadUrls = null;
+                exp = xpath.compile("//ed:DownloadURL");
+                NodeList dlList = (NodeList) exp.evaluate(item, XPathConstants.NODESET);
+                if ((dlList != null) && (dlList.getLength() > 0)) {
+                    downloadUrls = new ArrayList<>(dlList.getLength());
+                    for (int j = 0; j < dlList.getLength(); j++) {
+                        Element dlItem = (Element) list.item(j);
+                        String variant = getAttribute(item, "variant");
+                        String urlRaw = cleanString(dlItem.getTextContent());
+                        URI downloadUrl = URI.create(urlRaw);
+                        downloadUrls.add(new DownloadUrl(downloadUrl, variant));
+                    }
+                }
+                if (downloadUrls == null) {
+                    throw new SRUClientException("Endpoint must declare " +
+                            "download URLs (<DownloadURL>) if they " +
+                            "specify a <RequiredFont> element!");
+                }
+
+                if (requiredFonts == null) {
+                    requiredFonts = new ArrayList<>(list.getLength());
+                }
+                requiredFonts.add(new Font(id, name, description, descriptionUrl,
+                        fontFamily, license, licenseUrls, downloadUrls));
+            }
+        }
+
+        return requiredFonts;
+    }
+
+
     private static List<ResourceInfo> parseResources(XPath xpath, NodeList nodes,
             int depth, int maxDepth, Set<String> pids, List<DataView> supportedDataViews,
-            List<Layer> supportedLayers, List<LexField> supportedLexFields, int version,
-            List<URI> capabilities)
+            List<Layer> supportedLayers, List<LexField> supportedLexFields,
+            List<Font> availableFonts, int version, List<URI> capabilities)
                     throws SRUClientException, XPathExpressionException {
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
         final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
@@ -667,6 +762,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<DataView> availableDataViews = null;
             List<Layer> availableLayers = null;
             List<LexField> availableLexFields = null;
+            List<Font> requiredFonts = null;
             List<ResourceInfo> sub = null;
 
             pid = getAttribute(node, "pid");
@@ -967,13 +1063,50 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             logger.debug("LexFields: {}", availableLexFields);
 
+            // RequiredFonts
+            exp = xpath.compile("ed:RequiredFonts");
+            n = (Node) exp.evaluate(node, XPathConstants.NODE);
+            if ((n != null) && (n instanceof Element)) {
+                String ref = getAttribute((Element) n, "ref");
+                if (ref == null) {
+                    throw new SRUClientException("Element <RequiredFonts> " +
+                            "must have a 'ref' attribute");
+                }
+                String[] refs = ref.split("\\s+");
+                if ((refs == null) || (refs.length < 1)) {
+                    throw new SRUClientException("Attribute 'ref' on element " +
+                            "<RequiredFonts> must contain a whitespace " +
+                            "seperated list of required font references");
+                }
+
+                for (String ref2 : refs) {
+                    Font font = null;
+                    for (Font f : availableFonts) {
+                        if (ref2.equals(f.getIdentifier())) {
+                            font = f;
+                            break;
+                        }
+                    }
+                    if (font != null) {
+                        if (requiredFonts == null) {
+                            requiredFonts = new ArrayList<>();
+                        }
+                        requiredFonts.add(font);
+                    } else {
+                        throw new SRUClientException("A font with identifier '" +
+                                ref2 + "' was not defined " + "in <RequiredFonts>");
+                    }
+                }
+            }
+            logger.debug("RequiredFonts: {}", requiredFonts);
+
             final int nextDepth = depth + 1;
             if ((maxDepth == INFINITE_MAX_DEPTH) || (nextDepth < maxDepth)) {
                 exp = xpath.compile("ed:Resources/ed:Resource");
                 list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
                 if ((list != null) && (list.getLength() > 0)) {
                     sub = parseResources(xpath, list, depth + 1, maxDepth, pids, supportedDataViews,
-                            supportedLayers, supportedLexFields, version, capabilities);
+                            supportedLayers, supportedLexFields, availableFonts, version, capabilities);
                 }
             }
 
@@ -994,7 +1127,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             ris.add(new ResourceInfo(pid, titles, descrs, insts, link, langs,
                     availabilityRestriction, availableDataViews,
-                    availableLayers, availableLexFields, sub));
+                    availableLayers, availableLexFields, requiredFonts, sub));
         }
 
         return ris;
@@ -1279,10 +1412,97 @@ public class ClarinFCSEndpointDescriptionParser implements
                     ") capability");
         }
 
+        // RequiredFonts
+        // TODO: untested
+        List<Font> requiredFonts = null;
+        if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                "RequiredFonts", false)) {
+            while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                    "RequiredFont", (supportedLayers == null), true)) {
+                final String id = XmlStreamReaderUtils.readAttributeValue(reader, null, "id", true);
+                if ((id.indexOf(' ') != -1) || (id.indexOf(',') != -1) ||
+                        (id.indexOf(';') != -1)) {
+                    throw new XMLStreamException("Value of attribute 'id' on " +
+                            "element '<RequiredFont>' may not contain the " +
+                            "characters ',' (comma) or ';' (semicolon) " +
+                            "or ' ' (space)", reader.getLocation());
+                }
+
+                final String name = XmlStreamReaderUtils.readAttributeValue(reader, null, "name", true);
+                final String description = XmlStreamReaderUtils.readAttributeValue(reader, null, "description");
+
+                URI descriptionUrl = null;
+                final String s1 = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "description-url");
+                if (s1 != null && !s1.trim().isEmpty()) {
+                    try {
+                        descriptionUrl = new URI(s1);
+                    } catch (URISyntaxException e) {
+                        throw new XMLStreamException("'description-url' must be encoded " +
+                                "as URIs (offending value = '" + s1 + "')",
+                                reader.getLocation(), e);
+                    }
+                }
+
+                final String fontFamily = XmlStreamReaderUtils.readAttributeValue(reader, null, "font-family");
+                final String license = XmlStreamReaderUtils.readAttributeValue(reader, null, "license", true);
+
+                final List<URI> licenseUrls;
+                final String s2 = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "license-urls");
+                if (s2 != null && !s2.trim().isEmpty()) {
+                    licenseUrls = new ArrayList<>();
+                    for (String url : s2.split("\\s+")) {
+                        URI licenseUrl;
+                        try {
+                            licenseUrl = new URI(url);
+                        } catch (URISyntaxException e) {
+                            throw new XMLStreamException("'license-urls' must be encoded " +
+                                    "as space-separated valid URIs (offending value = '" +
+                                    url + "')", reader.getLocation(), e);
+                        }
+                        licenseUrls.add(licenseUrl);
+                    }
+                } else {
+                    licenseUrls = null;
+                }
+
+                reader.next(); // consume element
+
+                final List<DownloadUrl> downloadUrls = new ArrayList<>();
+                while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                    "DownloadURL", true, true)) {
+                    final String variant = XmlStreamReaderUtils.readAttributeValue(reader, null, "variant");
+                    reader.next(); // consume element
+                    final String downloadUrlRaw = XmlStreamReaderUtils.readString(reader, true);
+                    final URI downloadUrl;
+                    try {
+                        downloadUrl = new URI(downloadUrlRaw);
+                    } catch (URISyntaxException e) {
+                        throw new XMLStreamException("'DownloadURL' must be a" +
+                                " valid URI (offending value = '" + downloadUrlRaw + "')",
+                                reader.getLocation(), e);
+                    }
+                    logger.debug("font download: url={}, variant={}", downloadUrl, variant);
+                    XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "DownloadURL");
+                    downloadUrls.add(new DownloadUrl(downloadUrl, variant));
+                }
+
+                XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "RequiredFont");
+                if (requiredFonts == null) {
+                    requiredFonts = new ArrayList<>();
+                }
+                requiredFonts.add(new Font(id, name, description, descriptionUrl,
+                        fontFamily, license, licenseUrls, downloadUrls));
+            } // while
+            XmlStreamReaderUtils.readEnd(reader, ED_NS_URI,
+                    "RequiredFonts", true);
+        }
+
         // Resources
         final List<ResourceInfo> resources = parseResources(reader, 0, maxDepth,
                 hasAdvancedSearch, hasLexicalSearch, hasAuthenicatedSearch,
-                supportedDataViews, supportedLayers, supportedLexFields);
+                supportedDataViews, supportedLayers, supportedLexFields, requiredFonts);
 
         // skip over extensions
         while (!XmlStreamReaderUtils.peekEnd(reader,
@@ -1299,7 +1519,8 @@ public class ClarinFCSEndpointDescriptionParser implements
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "EndpointDescription");
 
         return new ClarinFCSEndpointDescription(version, capabilities,
-                supportedDataViews, supportedLayers, supportedLexFields, resources);
+                supportedDataViews, supportedLayers, supportedLexFields, requiredFonts,
+                resources);
     }
 
 
@@ -1308,7 +1529,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             int depth, int maxDepth, boolean hasAdvancedSearch,
             boolean hasLexicalSearch, boolean hasAuthenicatedSearch,
             List<DataView> supportedDataviews, List<Layer> supportedLayers,
-            List<LexField> supportedLexFields)
+            List<LexField> supportedLexFields, List<Font> availableFonts)
             throws XMLStreamException {
         List<ResourceInfo> resources = null;
 
@@ -1474,6 +1695,37 @@ public class ClarinFCSEndpointDescriptionParser implements
                         ")", reader.getLocation());
             }
 
+            // RequiredFonts
+            List<Font> fonts = null;
+            if (XmlStreamReaderUtils.readStart(reader, ED_NS_URI,
+                    "RequiredFonts", false, true)) {
+                final String ls = XmlStreamReaderUtils.readAttributeValue(reader,
+                        null, "ref", true);
+                reader.next(); // consume start tag
+                XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "RequiredFonts");
+                for (String l : ls.split("\\s+")) {
+                    boolean found = false;
+                    if (availableFonts != null) {
+                        for (Font font : availableFonts) {
+                            if (font.getIdentifier().equals(l)) {
+                                found = true;
+                                if (fonts == null) {
+                                    fonts = new ArrayList<>();
+                                }
+                                fonts.add(font);
+                                break;
+                            }
+                        } // for
+                    }
+                    if (!found) {
+                        throw new XMLStreamException("Font with id '" + l +
+                                "' was not declared in <RequiredFonts>",
+                                reader.getLocation());
+                    }
+                } // for
+                logger.debug("RequiredFonts: {}", fonts);
+            }
+
             List<ResourceInfo> subResources = null;
             if (XmlStreamReaderUtils.peekStart(reader,
                     ED_NS_URI, "Resources")) {
@@ -1483,7 +1735,8 @@ public class ClarinFCSEndpointDescriptionParser implements
                     subResources = parseResources(reader, nextDepth,
                             maxDepth, hasAdvancedSearch, hasLexicalSearch,
                             hasAuthenicatedSearch, supportedDataviews,
-                            supportedLayers, supportedLexFields);
+                            supportedLayers, supportedLexFields,
+                            availableFonts);
                 } else {
                     XmlStreamReaderUtils.skipTag(reader, ED_NS_URI,
                             "Resources", true);
@@ -1510,7 +1763,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             resources.add(new ResourceInfo(pid, title, description,
                     institution, landingPageURI, languages,
                     availabilityRestriction, dataviews, layers, lexFields,
-                    subResources));
+                    fonts, subResources));
         } // while
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resources");
 

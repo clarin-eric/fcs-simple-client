@@ -595,9 +595,20 @@ public class ClarinFCSEndpointDescriptionParser implements
                 String type = cleanString(item.getTextContent());
                 if ((type != null) && !type.isEmpty()) {
                     // sanity check on layer types
+                    boolean valid = false;
                     try {
                         DataViewLex.FieldType.fromString(type);
+                        valid = true;
                     } catch (IllegalArgumentException iae) {
+                    }
+                    if (!valid) {
+                        try {
+                            DataViewLex.VirtualFieldType.fromString(type);
+                            valid = true;
+                        } catch (IllegalArgumentException iae) {
+                        }
+                    }
+                    if (!valid) {
                         // TODO: check for "x-" extensible type definition?
                         if (!type.startsWith("x-")) {
                             logger.debug("lex field type '{}' is not defined by specification", type);

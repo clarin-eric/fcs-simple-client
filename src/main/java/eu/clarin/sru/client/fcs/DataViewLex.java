@@ -120,6 +120,44 @@ public class DataViewLex extends DataView {
     }
 
     /**
+     * All valid virtual <code>type</code> values for the
+     * <code>&lt;Entry/&gt;</code> element of an Lex Data View.
+     */
+    public enum VirtualFieldType {
+        LANG("lang");
+
+        private String type;
+
+        VirtualFieldType(String type) {
+            this.type = type;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        /**
+         * Retrive the enum value for a given type string. Is case-sensitive.
+         * 
+         * @param type string type value of an enum value
+         * @return corresponding enum value
+         * @throws IllegalArgumentException if <code>type</code> parameter does not
+         *                                  specify a known enum value
+         */
+        public static VirtualFieldType fromString(String type) {
+            if (type == null) {
+                throw new NullPointerException("type == null");
+            }
+            for (VirtualFieldType ft : VirtualFieldType.values()) {
+                if (ft.type.equals(type)) {
+                    return ft;
+                }
+            }
+            throw new IllegalArgumentException("No enum constant with type '" + type + "'!");
+        }
+    }
+
+    /**
      * Container class for <code>&lt;Field/&gt;</code> data.
      */
     public static final class Field {

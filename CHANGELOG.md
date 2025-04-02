@@ -1,5 +1,13 @@
 # Changelog
 
+# [2.3.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.3.0) - 2025-04-02
+
+- Additions:
+  - Add a more "secure" `withKeyPair(RSAPublicKey, RSAPrivateKey)` setter to `ClarinFCSRequestAuthenticator.Builder`. Users should use the `KeyReaderUtils.read*Key()` methods themselves that the other `withKeyPair*()` convenience methods use internally.
+
+- Changes:
+  - **BREAKING** Rename `withKeyPairStrings` to `withKeyPairContents` of `ClarinFCSRequestAuthenticator.Builder`
+
 # [2.2.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.2.0) - 2024-12-06
 
 - Additions:

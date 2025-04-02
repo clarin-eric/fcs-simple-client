@@ -188,30 +188,34 @@ public class ClarinFCSRequestAuthenticator implements SRURequestAuthenticator {
                 logger.debug("load private key from file '{}'", privateKeyFile);
                 RSAPrivateKey privateKey = KeyReaderUtils.readPrivateKey(privateKeyFile);
 
-                algorithm = Algorithm.RSA256(publicKey, privateKey);
-                return this;
+                return withKeyPair(publicKey, privateKey);
             } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
                 throw new IllegalArgumentException("error reading key pair", e);
             }
         }
 
 
-        public Builder withKeyPairStrings(String publicKeyContent, String privateKeyContent) {
+        public Builder withKeyPairContents(String publicKeyContent, String privateKeyContent) {
             try {
                 logger.debug("load public key from string", publicKeyContent);
                 RSAPublicKey publicKey = KeyReaderUtils.readPublicKey(publicKeyContent);
                 logger.debug("load private key from string", privateKeyContent);
                 RSAPrivateKey privateKey = KeyReaderUtils.readPrivateKey(privateKeyContent);
 
-                algorithm = Algorithm.RSA256(publicKey, privateKey);
-                return this;
+                return withKeyPair(publicKey, privateKey);
             } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
                 throw new IllegalArgumentException("error reading key pair", e);
             }
         }
 
+        public Builder withKeyPair(RSAPublicKey publicKey, RSAPrivateKey privateKey) {
+            algorithm = Algorithm.RSA256(publicKey, privateKey);
+            return this;
+        }
 
-        // TODO: with private key (derive public key)
+
+        // NOTE: with private key only (derive public key)
+        // make this a task for the user to avoid edge cases where it might not work
 
 
         public ClarinFCSRequestAuthenticator build() {

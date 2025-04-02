@@ -1,5 +1,19 @@
 # Changelog
 
+# [2.4.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.4.0) - 2025-04-02
+
+- Additions:
+  - Add support for the Lexical FCS ("LexFCS") extension:
+    - Default Data View parsers for `DataViewParserHitsWithLexAnnotations` (extended `DataViewParserHits` with higher priority) and `DataViewParserLex` (official LexFCS Data View, `application/x-clarin-fcs-lex+xml`)
+    - New capability URL: `CAPABILITY_LEX_SEARCH` (`http://clarin.eu/fcs/capability/lex-search`)
+    - (optional) parsing support in endpoint description for `<SupportedLexFields>` in endpoints and `<AvailableLexFields>` in resources
+    - POJOs for Data Views and `LexField`
+    - **NOTE** _This is preliminary support for the new LexFCS specification extension, minor details might be changed in the future._
+
+- Fixes:
+  - Small fixes for older copy-paste errors in log messages, comments
+  - Adding missing logging statements
+
 # [2.3.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.3.0) - 2025-04-02
 
 - Additions:

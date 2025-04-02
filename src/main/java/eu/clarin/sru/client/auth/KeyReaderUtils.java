@@ -18,7 +18,10 @@ import java.security.spec.X509EncodedKeySpec;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 
-public class KeyReaderUtils {
+public final class KeyReaderUtils {
+    private KeyReaderUtils() {
+    }
+
     public static RSAPublicKey readPublicKey(File file)
             throws NoSuchAlgorithmException, IOException, InvalidKeySpecException {
         try (FileInputStream stream = new FileInputStream(file)) {

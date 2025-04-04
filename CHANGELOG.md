@@ -2,11 +2,11 @@
 
 # [2.5.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.0) - 2025-04-04
 
-- Fixed:
+- Fixes:
   - Add `lex` query type constant value
 
 - Dependencies:
-  - Bump `sru-client` to `2.4.0`
+  - Bump [`sru-client`](https://github.com/clarin-eric/fcs-sru-client) to `2.4.0`
 
 # [2.4.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.4.0) - 2025-04-02
 

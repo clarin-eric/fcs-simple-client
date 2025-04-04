@@ -1,5 +1,13 @@
 # Changelog
 
+# [2.5.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.0) - 2025-04-04
+
+- Fixed:
+  - Add `lex` query type constant value
+
+- Dependencies:
+  - Bump `sru-client` to `2.4.0`
+
 # [2.4.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.4.0) - 2025-04-02
 
 - Additions:
@@ -21,6 +29,13 @@
 
 - Changes:
   - **BREAKING** Rename `withKeyPairStrings` to `withKeyPairContents` of `ClarinFCSRequestAuthenticator.Builder`
+
+- Dependencies:
+  - Bump `org.bouncycastle` to `1.80`
+  - Bump `com.auth0:java-jwt` to `4.5.0`
+  - Bump `org.slf4j` to `2.0.17`
+  - Bump Maven build plugin versions
+  - Bump Github Actions CI script actions versions
 
 # [2.2.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.2.0) - 2024-12-06
 

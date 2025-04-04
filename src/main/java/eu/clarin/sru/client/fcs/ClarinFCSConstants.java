@@ -22,13 +22,18 @@ import eu.clarin.sru.client.SRUClientConstants;
 
 public final class ClarinFCSConstants {
 
-    /** constant for CQL query type */
+    /** constant for FCS-QL query type, advanced search */
     public static final String QUERY_TYPE_FCS = "fcs";
 
 
-    /** constant for CQL query type */
+    /** constant for CQL query type, basic search */
     public static final String QUERY_TYPE_CQL =
             SRUClientConstants.QUERY_TYPE_CQL;
+
+
+    /** constant for LexCQL query type, lexical search */
+    public static final String QUERY_TYPE_LEX = "lex";
+
 
     /**
      * constant for extra request parameter "x-fcs-endpoint-description"

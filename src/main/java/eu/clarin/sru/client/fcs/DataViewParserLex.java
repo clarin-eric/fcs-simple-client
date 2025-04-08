@@ -80,7 +80,7 @@ public final class DataViewParserLex implements DataViewParser {
                 final boolean preferred = Boolean
                         .parseBoolean(XmlStreamReaderUtils.readAttributeValue(reader, null, "preferred"));
                 final String refRaw = XmlStreamReaderUtils.readAttributeValue(reader, null, "ref");
-                final String idRefsRaw = XmlStreamReaderUtils.readAttributeValue(reader, null, "idrefs");
+                final String idRefsRaw = XmlStreamReaderUtils.readAttributeValue(reader, null, "idRefs");
                 List<String> idRefs = null;
                 if (idRefsRaw != null) {
                     idRefs = Arrays.asList(idRefsRaw.trim().replaceAll("\\s+", " ").split(" "));

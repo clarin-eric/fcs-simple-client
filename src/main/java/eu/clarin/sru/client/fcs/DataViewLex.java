@@ -86,7 +86,7 @@ public class DataViewLex extends DataView {
         REF("ref"),
         SENSEREF("senseRef"),
         // citations/quotations
-        CIT("citation");
+        CITATION("citation");
 
         private String type;
 

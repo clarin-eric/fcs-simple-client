@@ -1,5 +1,10 @@
 # Changelog
 
+# [2.5.1](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.1) - 2025-04-08
+
+- Fixed:
+  - Change to case-correct `idRefs` attribute name in Lex field value.
+
 # [2.5.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.0) - 2025-04-04
 
 - Fixes:

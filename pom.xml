@@ -17,6 +17,7 @@
         <!-- plug-in settings -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.release>8</maven.compiler.release>
         <!-- versions of common dependencies -->
         <slf4j.version>2.0.17</slf4j.version>
     </properties>

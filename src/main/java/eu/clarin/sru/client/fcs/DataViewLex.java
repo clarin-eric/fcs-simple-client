@@ -210,9 +210,11 @@ public class DataViewLex extends DataView {
         protected Value(String value, String xmlId, String xmlLang, String langUri, boolean preferred, String ref,
                 List<String> idRefs, String vocabRef, String vocabValueRef, String type, String source,
                 String sourceRef, String date) {
-            if (value == null) {
-                throw new NullPointerException("value == null");
-            }
+            // NOTE: this might be intentionally empty
+            // if (value == null) {
+            //     throw new NullPointerException("value == null");
+            // }
+
             this.value = value;
             // all other optional attributes
             this.xmlId = xmlId;

@@ -101,6 +101,21 @@ public final class DataViewParserLex implements DataViewParser {
                             reader.getLocation());
                 }
 
+                // check if any attributes are set
+                boolean hasAttributes = false;
+                hasAttributes |= xmlLang != null;
+                hasAttributes |= xmlId != null;
+                hasAttributes |= langUri != null;
+                hasAttributes |= preferred;
+                hasAttributes |= refRaw != null;
+                hasAttributes |= idRefs != null && !idRefs.isEmpty();
+                hasAttributes |= vocabRef != null;
+                hasAttributes |= vocabValueRef != null;
+                hasAttributes |= typeRaw != null;
+                hasAttributes |= source != null;
+                hasAttributes |= sourceRef != null;
+                hasAttributes |= date != null;
+
                 reader.next(); // skip start element
 
                 String content = XmlStreamReaderUtils.readString(reader, false);
@@ -111,6 +126,15 @@ public final class DataViewParserLex implements DataViewParser {
                         + "source={}, sourceRef={}, date={}",
                         content, xmlId, xmlLang, langUri, preferred, refRaw, idRefs, vocabRef, vocabValueRef,
                         typeRaw, source, sourceRef, date);
+                if (content == null) {
+                    if (hasAttributes) {
+                        logger.warn("value has no content but specifies attributes!");
+                    } else {
+                        logger.error("value has no content and no attributes set! Skip.");
+                        continue;
+                    }
+                }
+
                 DataViewLex.Value value = new DataViewLex.Value(content, xmlId, xmlLang, langUri, preferred,
                         refRaw, idRefs, vocabRef, vocabValueRef, typeRaw, source, sourceRef, date);
                 values.add(value);

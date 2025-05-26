@@ -1,5 +1,13 @@
 # Changelog
 
+# [2.5.2](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.2) - 2025-05-26
+
+- Fixed:
+  - Allow empty Value elements when parsing the Lex Data View. It is not recommended but might have a use case.
+  - Typo in log message.
+  - Strict Java 8 compile check in `pom.xml`.
+  - Rename Lex Field Type enum constant `CIT` to `CITATION` for the value `"citation"`.
+
 # [2.5.1](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.1) - 2025-04-08
 
 - Fixed:

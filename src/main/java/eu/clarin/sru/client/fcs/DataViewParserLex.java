@@ -107,7 +107,7 @@ public final class DataViewParserLex implements DataViewParser {
                 XmlStreamReaderUtils.readEnd(reader, FCS_LEX_NS, "Value");
 
                 logger.debug("value: content='{}', xml:id={}, xml:lang={}, langUri={}, "
-                        + "preferred={}, ref={}, idRefs={}, vocabRef={}, vocabValueRef={}, type={}"
+                        + "preferred={}, ref={}, idRefs={}, vocabRef={}, vocabValueRef={}, type={}, "
                         + "source={}, sourceRef={}, date={}",
                         content, xmlId, xmlLang, langUri, preferred, refRaw, idRefs, vocabRef, vocabValueRef,
                         typeRaw, source, sourceRef, date);

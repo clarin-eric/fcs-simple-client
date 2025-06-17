@@ -1,5 +1,10 @@
 # Changelog
 
+# [2.6.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.6.0) - 2025-06-17
+
+- Dependencies:
+  - Bump [`sru-client`](https://github.com/clarin-eric/fcs-sru-client) to `2.5.0`
+
 # [2.5.2](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.5.2) - 2025-05-26
 
 - Fixed:

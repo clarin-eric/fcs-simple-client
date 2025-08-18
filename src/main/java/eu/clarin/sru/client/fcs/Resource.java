@@ -88,6 +88,8 @@ public class Resource {
             return dataviews;
         }
     } // inner class ResourceFragment
+
+
     private final String pid;
     private final String ref;
     private final List<DataView> dataviews;

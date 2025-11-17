@@ -431,6 +431,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final String identifier;
         private final String fieldType;
 
+
         /**
          * Constructor. <em>Internal use only!</em>
          */
@@ -487,6 +488,96 @@ public class ClarinFCSEndpointDescription implements Serializable,
 
 
     /**
+     * This class implements a description of resource specific example queries.
+     */
+    public static final class ExampleQuery implements Serializable {
+        private static final long serialVersionUID = 4729212455078860433L;
+        private final String query;
+        private final String queryType;
+        private final Map<String, String> description;
+
+
+        /**
+         * Constructor. <em>Internal use only!</em>
+         */
+        ExampleQuery(String query, String queryType, Map<String, String> description) {
+            if (query == null) {
+                throw new NullPointerException("query == null");
+            }
+            this.query = query;
+
+            if (queryType == null) {
+                throw new NullPointerException("queryType == null");
+            }
+            this.queryType = queryType;
+
+            if (description == null) {
+                throw new NullPointerException("description == null");
+            }
+            if (description.isEmpty()) {
+                throw new IllegalArgumentException("description is empty");
+            }
+            this.description = Collections.unmodifiableMap(description);
+        }
+
+
+        /**
+         * Get the query string for this example query.
+         *
+         * @return the query string
+         */
+        public String getQuery() {
+            return query;
+        }
+
+
+        /**
+         * Get the query type for this example query.
+         *
+         * @return the query type
+         */
+        public String getQueryType() {
+            return queryType;
+        }
+
+
+        /**
+         * Get the description for this example query.
+         *
+         * @return a Map of descriptions keyed by language code
+         */
+        public Map<String, String> getDescription() {
+            return description;
+        }
+
+
+        /**
+         * Get the description of the example query for a specific language code.
+         *
+         * @param language
+         *            the language code
+         * @return the description for the language code or <code>null</code> if no
+         *         title for this language code exists
+         */
+        public String getDescription(String language) {
+            return (description != null) ? description.get(language) : null;
+        }
+
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(getClass().getSimpleName());
+            sb.append("[");
+            sb.append("query=").append(query);
+            sb.append(", queryType=").append(queryType);
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+
+
+    /**
      * This class implements a description of a resource available at an
      * endpoint.
      */
@@ -521,6 +612,7 @@ public class ClarinFCSEndpointDescription implements Serializable,
         private final List<DataView> availableDataViews;
         private final List<Layer> availableLayers;
         private final List<LexField> availableLexFields;
+        private final List<ExampleQuery> exampleQueries;
         private final List<ResourceInfo> subResources;
 
 
@@ -534,7 +626,8 @@ public class ClarinFCSEndpointDescription implements Serializable,
                 List<String> languages,
                 AvailabilityRestriction availabilityRestriction,
                 List<DataView> availableDataViews, List<Layer> availableLayers,
-                List<LexField> availableLexFields, List<ResourceInfo> subResources) {
+                List<LexField> availableLexFields, List<ExampleQuery> exampleQueries,
+                List<ResourceInfo> subResources) {
             if (pid == null) {
                 throw new NullPointerException("pid == null");
             }
@@ -590,6 +683,13 @@ public class ClarinFCSEndpointDescription implements Serializable,
                         Collections.unmodifiableList(availableLexFields);
             } else {
                 this.availableLexFields = Collections.emptyList();
+            }
+
+            if ((exampleQueries != null) && !exampleQueries.isEmpty()) {
+                this.exampleQueries =
+                        Collections.unmodifiableList(exampleQueries);
+            } else {
+                this.exampleQueries = Collections.emptyList();
             }
 
             if ((subResources != null) && !subResources.isEmpty()) {
@@ -803,6 +903,18 @@ public class ClarinFCSEndpointDescription implements Serializable,
         public List<LexField> getAvailableLexFields() {
             return availableLexFields;
         }
+
+
+        /**
+         * Get a list of example queries that are available for this
+         * resource.
+         *
+         * @return the list of example queries available for this resource
+         */
+        public List<ExampleQuery> getExampleQueries() {
+            return exampleQueries;
+        }
+
     } // class ResourceInfo
 
 } // class ClarinFCSEndpointDescription

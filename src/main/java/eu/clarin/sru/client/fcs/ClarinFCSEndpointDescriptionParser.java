@@ -49,6 +49,7 @@ import eu.clarin.sru.client.SRUExtraResponseData;
 import eu.clarin.sru.client.SRUExtraResponseDataParser;
 import eu.clarin.sru.client.XmlStreamReaderUtils;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView;
+import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.ExampleQuery;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.DataView.DeliveryPolicy;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.Layer;
 import eu.clarin.sru.client.fcs.ClarinFCSEndpointDescription.LexField;
@@ -667,6 +668,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<DataView> availableDataViews = null;
             List<Layer> availableLayers = null;
             List<LexField> availableLexFields = null;
+            List<ExampleQuery> exampleQueries = null;
             List<ResourceInfo> sub = null;
 
             pid = getAttribute(node, "pid");
@@ -696,7 +698,7 @@ public class ClarinFCSEndpointDescriptionParser implements
                     final String title = cleanString(n.getTextContent());
                     if (title == null) {
                         throw new SRUClientException("Element <Title> " +
-                                "must have a non-empty 'xml:lang' attribute");
+                                "must have non-empty content");
                     }
 
                     if (titles == null) {
@@ -756,7 +758,6 @@ public class ClarinFCSEndpointDescriptionParser implements
                     if (lang == null) {
                         throw new SRUClientException("Element <Institution> " +
                                 "must have a proper 'xml:lang' attribute");
-
                     }
                     String inst = cleanString(n.getTextContent());
 
@@ -967,6 +968,20 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             logger.debug("LexFields: {}", availableLexFields);
 
+            exp = xpath.compile("ed:ExampleQuery");
+            list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+            if ((list != null) && (list.getLength() > 0)) {
+                for (int i = 0; i < list.getLength(); i++) {
+                    Element n2 = (Element) list.item(i);
+                    ExampleQuery exampleQuery = parseExampleQuery(xpath, n2);
+                    if (exampleQueries == null) {
+                        exampleQueries = new ArrayList<>();
+                    }
+                    exampleQueries.add(exampleQuery);
+                }
+            }
+            logger.debug("ExampleQueries: {}", exampleQueries);
+
             final int nextDepth = depth + 1;
             if ((maxDepth == INFINITE_MAX_DEPTH) || (nextDepth < maxDepth)) {
                 exp = xpath.compile("ed:Resources/ed:Resource");
@@ -994,10 +1009,64 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
             ris.add(new ResourceInfo(pid, titles, descrs, insts, link, langs,
                     availabilityRestriction, availableDataViews,
-                    availableLayers, availableLexFields, sub));
+                    availableLayers, availableLexFields, exampleQueries, sub));
         }
 
         return ris;
+    }
+
+
+    private static ExampleQuery parseExampleQuery(XPath xpath, Element node)
+            throws SRUClientException, XPathExpressionException {
+        String type = getAttribute((Element) node, "type");
+        if (type == null) {
+            throw new SRUClientException("Element <ExampleQuery> " +
+                    "must have a 'type' attribute");
+        }
+
+        XPathExpression exp = xpath.compile("ed:Query");
+        Node n = (Node) exp.evaluate(node, XPathConstants.NODE);
+        String query = cleanString(n.getTextContent());
+        if (query == null) {
+            throw new SRUClientException("Element <Query> " +
+                    "must have non-empty content");
+        }
+
+        Map<String, String> descrs = null;
+        exp = xpath.compile("ed:Description");
+        NodeList list = (NodeList) exp.evaluate(node, XPathConstants.NODESET);
+        if ((list != null) && (list.getLength() > 0)) {
+            for (int i = 0; i < list.getLength(); i++) {
+                Element n2 = (Element) list.item(i);
+
+                String lang = getLangAttribute(n2);
+                if (lang == null) {
+                    throw new SRUClientException("Element <Description> " +
+                            "must have a proper 'xml:lang' attribute");
+
+                }
+                String desc = cleanString(n2.getTextContent());
+
+                if (descrs == null) {
+                    descrs = new HashMap<>();
+                }
+
+                if (descrs.containsKey(lang)) {
+                    logger.warn("A <Description>  with language '{}' " +
+                            "already exists", lang);
+                } else {
+                    descrs.put(lang, desc);
+                }
+            }
+            if (descrs == null) {
+                logger.warn("A <Description> element is mandatory");
+            }
+            if ((descrs != null) && !descrs.containsKey(LANG_EN)) {
+                logger.warn("A <Description> with language 'en' is mandatory");
+            }
+        }
+
+        return new ExampleQuery(query, type, descrs);
     }
 
 
@@ -1474,6 +1543,9 @@ public class ClarinFCSEndpointDescriptionParser implements
                         ")", reader.getLocation());
             }
 
+            // ExampleQuery
+            List<ExampleQuery> exampleQueries = parseExampleQueries(reader);
+
             List<ResourceInfo> subResources = null;
             if (XmlStreamReaderUtils.peekStart(reader,
                     ED_NS_URI, "Resources")) {
@@ -1510,7 +1582,7 @@ public class ClarinFCSEndpointDescriptionParser implements
             resources.add(new ResourceInfo(pid, title, description,
                     institution, landingPageURI, languages,
                     availabilityRestriction, dataviews, layers, lexFields,
-                    subResources));
+                    exampleQueries, subResources));
         } // while
         XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "Resources");
 
@@ -1610,6 +1682,36 @@ public class ClarinFCSEndpointDescriptionParser implements
                     "' for content in element '<AvailabilityRestriction>'",
                     reader.getLocation());
         }
+    }
+
+
+    @Deprecated
+    private static List<ExampleQuery> parseExampleQueries(XMLStreamReader reader) throws XMLStreamException {
+        List<ExampleQuery> result = null;
+
+        while (XmlStreamReaderUtils.readStart(reader, ED_NS_URI, "ExampleQuery",
+                false, true)) {
+            final String queryType = XmlStreamReaderUtils.readAttributeValue(reader,
+                    null, "type", true);
+            reader.next(); // consume start tag
+            logger.debug("queryType: {}", queryType);
+
+            final String query = XmlStreamReaderUtils.readContent(reader, ED_NS_URI,
+                    "Query", true);
+            logger.debug("query: {}", query);
+
+            final Map<String, String> description = parseI18String(reader, "Description", true);
+            logger.debug("query description: {}", description);
+
+            if (result == null) {
+                result = new ArrayList<>();
+            }
+            result.add(new ExampleQuery(query, queryType, description));
+
+            XmlStreamReaderUtils.readEnd(reader, ED_NS_URI, "ExampleQuery");
+        }
+
+        return result;
     }
 
 } // class ClarinFCSEndpointDescriptionParser

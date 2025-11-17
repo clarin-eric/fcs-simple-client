@@ -1,5 +1,14 @@
 # Changelog
 
+# [2.7.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.7.0) - 2025-11-17
+
+- Additions:
+  - Add support for `ExampleQuery` parsing
+
+- Fixes:
+  - Add `maven-compiler-plugin` `release` configuration
+  - Whitespaces
+
 # [2.6.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.6.0) - 2025-06-17
 
 - Dependencies:

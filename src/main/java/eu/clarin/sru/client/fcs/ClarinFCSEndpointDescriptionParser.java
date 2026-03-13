@@ -1023,6 +1023,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             throw new SRUClientException("Element <ExampleQuery> " +
                     "must have a 'type' attribute");
         }
+        // do strict validation of known query types
+        checkForKnownQueryTypes(type);
 
         XPathExpression exp = xpath.compile("ed:Query");
         Node n = (Node) exp.evaluate(node, XPathConstants.NODE);
@@ -1114,6 +1116,25 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
         }
         return null;
+    }
+
+
+    private static void checkForKnownQueryTypes(String type)
+            throws SRUClientException {
+        if (type == null) {
+            throw new SRUClientException("query type must not be null");
+        }
+
+        switch (type) {
+            case ClarinFCSConstants.QUERY_TYPE_CQL:
+            case ClarinFCSConstants.QUERY_TYPE_FCS:
+            case ClarinFCSConstants.QUERY_TYPE_LEX:
+                break;
+
+            default:
+                throw new SRUClientException(
+                        "query type '" + type + "' is non-standard, only 'cql', 'fcs' and 'lex' are supported");
+        }
     }
 
 
@@ -1693,6 +1714,13 @@ public class ClarinFCSEndpointDescriptionParser implements
                 false, true)) {
             final String queryType = XmlStreamReaderUtils.readAttributeValue(reader,
                     null, "type", true);
+            try {
+                checkForKnownQueryTypes(queryType);
+            } catch (SRUClientException ex) {
+                throw new XMLStreamException("Invalid query type '" + queryType +
+                                "' attribute value in element '<ExampleQuery>'",
+                        reader.getLocation(), ex);
+            }
             reader.next(); // consume start tag
             logger.debug("queryType: {}", queryType);
 

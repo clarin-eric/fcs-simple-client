@@ -76,7 +76,8 @@ public class ClarinFCSEndpointDescriptionParser implements
      */
     public static final boolean DEFAULT_PARSING_STREAMING = false;
 
-    private static final Logger logger = LoggerFactory.getLogger(ClarinFCSClientBuilder.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClarinFCSEndpointDescriptionParser.class);
+
     private static final String ED_NS_URI = "http://clarin.eu/fcs/endpoint-description";
     private static final String ED_NS_LEGACY_URI = "http://clarin.eu/fcs/1.0/resource-info";
     private static final QName ED_ROOT_ELEMENT = new QName(ED_NS_URI, "EndpointDescription");

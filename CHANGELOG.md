@@ -1,5 +1,19 @@
 # Changelog
 
+# [2.8.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.8.0) - 2026-08-31
+
+- Additions:
+  - LexFCS 1.0 capability URL: `http://clarin.eu/fcs/capability/lexical-search/1.0` (`ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0`)
+  - LexFCS 1.0 extra request parameter: `x-fcs-lex-fields` (`ClarinFCSConstants.X_FCS_LEX_FIELDS`)
+
+- Changes:
+  - Add support for LexFCS 1.0 additional fields and new capability URL, port both old and new capability URLs
+    - New lex field types: `any` (virtual index for all fields, 'lemma' is default if unspecified in query); `grammar`, `degree`, `mood`, `tense`
+
+- Fixes:
+  - Strict check for known query types of `ExampleQuery` elements in the endpoint description. (`cql`/`fcs`/`lex`)
+  - Logger name in `ClarinFCSEndpointDescriptionParser`
+
 # [2.7.0](https://github.com/clarin-eric/fcs-simple-client/releases/tag/FCSSimpleClient-2.7.0) - 2025-11-17
 
 - Additions:

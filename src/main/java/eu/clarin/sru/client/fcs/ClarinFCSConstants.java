@@ -73,7 +73,7 @@ public final class ClarinFCSConstants {
     /**
      * constant for <i>latest</i> Lexical Search capability (v1.0)
      *
-     * @see {@link #CAPABILITY_LEXICAL_SEARCH_V1_0} latest Lexical Search capability
+     * @see #CAPABILITY_LEXICAL_SEARCH_V1_0
      */
     public static final URI CAPABILITY_LEXICAL_SEARCH_LATEST =
             CAPABILITY_LEXICAL_SEARCH_V1_0;

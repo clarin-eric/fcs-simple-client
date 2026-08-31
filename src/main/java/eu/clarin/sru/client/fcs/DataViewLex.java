@@ -56,17 +56,21 @@ public class DataViewLex extends DataView {
         ENTRY_ID("entryId"),
         // lemma
         LEMMA("lemma"),
-        TRANSLATION("translation"),
-        TRANSCRIPTION("transcription"),
         PHONETIC("phonetic"),
+        TRANSCRIPTION("transcription"),
+        TRANSLATION("translation"),
         // prosaic descriptions
         DEFINITION("definition"),
         ETYMOLOGY("etymology"),
         // grammar/morphology
+        GRAMMAR("grammar"),
         CASE("case"),
-        NUMBER("number"),
+        DEGREE("degree"),
         GENDER("gender"),
+        MOOD("mood"),
+        NUMBER("number"),
         POS("pos"),
+        TENSE("tense"),
         BASEFORM("baseform"),
         SEGMENTATION("segmentation"),
         // numeric stuff
@@ -74,10 +78,10 @@ public class DataViewLex extends DataView {
         FREQUENCY("frequency"),
         // relations
         ANTONYM("antonym"),
-        HYPONYM("hyponym"),
-        HYPERNYM("hypernym"),
-        MERONYM("meronym"),
         HOLONYM("holonym"),
+        HYPERNYM("hypernym"),
+        HYPONYM("hyponym"),
+        MERONYM("meronym"),
         SYNONYM("synonym"),
         // SUBORDINATE("subordinate"),
         // SUPERORDINATE("superordinate"),
@@ -124,6 +128,7 @@ public class DataViewLex extends DataView {
      * <code>&lt;Entry/&gt;</code> element of an Lex Data View.
      */
     public enum VirtualFieldType {
+        ANY("any"),
         LANG("lang");
 
         private String type;

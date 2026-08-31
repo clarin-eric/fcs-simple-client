@@ -323,18 +323,29 @@ public class ClarinFCSEndpointDescriptionParser implements
                 }
             }
         }
+
         final boolean hasBasicSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_BASIC_SEARCH) != -1);
         final boolean hasAdvancedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH)
+                || capabilities.contains(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0);
         final boolean hasAuthenticatedSearch = (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH) != -1);
+
         if (!hasBasicSearch) {
             throw new SRUClientException("Endpoint must support 'basic-search' (" +
                     ClarinFCSConstants.CAPABILITY_BASIC_SEARCH +
                     ") to conform to CLARIN-FCS specification");
         }
+
         if (hasAdvancedSearch && (version < 2)) {
             logger.warn("Endpoint description is declared as version " +
                     "FCS 1.0 (@version = 1), but contains support for " +
                     "Advanced Search in capabilities list! FCS 1.0 only " +
+                    "supports Basic Search");
+        }
+        if (hasLexicalSearch && (version < 2)) {
+            logger.warn("Endpoint description is declared as version " +
+                    "FCS 1.0 (@version = 1), but contains support for " +
+                    "Lexical Search in capabilities list! FCS 1.0 only " +
                     "supports Basic Search");
         }
         if (hasAuthenticatedSearch && (version < 2)) {
@@ -342,6 +353,12 @@ public class ClarinFCSEndpointDescriptionParser implements
                     "FCS 1.0 (@version = 1), but contains support for " +
                     "Authenticated Search in capabilities list! FCS 1.0 only " +
                     "supports Basic Search");
+        }
+
+        if (hasLexicalSearch && !capabilities.contains(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_LATEST)) {
+            logger.warn("Endpoint description indicates support for Lexical Search with " +
+                        "an older version, consider migrating to latest capability ({})!",
+                        ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_LATEST);
         }
 
         return capabilities;
@@ -422,7 +439,8 @@ public class ClarinFCSEndpointDescriptionParser implements
         }
 
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
-        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH)
+                || capabilities.contains(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0);
         boolean hasHitsView = false;
         boolean hasAdvView = false;
         boolean hasLexView = false;
@@ -628,19 +646,20 @@ public class ClarinFCSEndpointDescriptionParser implements
             }
         }
 
-        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH)
+                || capabilities.contains(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0);
         if (hasLexicalSearch && (supportedLexFields == null)) {
             throw new SRUClientException("Endpoint must declare " +
                     "all supported lex fields (<SupportedLexFields>) if they " +
-                    "provide the 'lex-search' (" +
-                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    "provide the 'lexical-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0 +
                     ") capability");
         }
         if ((supportedLexFields != null) && !hasLexicalSearch) {
                 logger.warn("Endpoint description has <SupportedLexFields> but " +
                         "does not indicate support for Lexical Search using " +
                         "the capability ({})!",
-                        ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+                        ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0);
         } // necessary
 
         return supportedLexFields;
@@ -653,7 +672,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             List<URI> capabilities)
                     throws SRUClientException, XPathExpressionException {
         final boolean hasAdvancedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH);
-        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH);
+        final boolean hasLexicalSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_LEX_SEARCH)
+                || capabilities.contains(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0);
         final boolean hasAuthenticatedSearch = capabilities.contains(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH);
         List<ResourceInfo> ris = null;
 
@@ -1188,7 +1208,8 @@ public class ClarinFCSEndpointDescriptionParser implements
         final boolean hasAdvancedSearch = (capabilities
                 .indexOf(ClarinFCSConstants.CAPABILITY_ADVANCED_SEARCH) != -1);
         final boolean hasLexicalSearch = (capabilities
-                .indexOf(ClarinFCSConstants.CAPABILITY_LEX_SEARCH) != -1);
+                .indexOf(ClarinFCSConstants.CAPABILITY_LEX_SEARCH) != -1)
+                || (capabilities.indexOf(ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0) != -1);
         final boolean hasAuthenicatedSearch = (capabilities
                 .indexOf(ClarinFCSConstants.CAPABILITY_AUTHENTICATED_SEARCH) != -1);
         if (!hasBasicSearch) {
@@ -1357,16 +1378,16 @@ public class ClarinFCSEndpointDescriptionParser implements
         if (hasLexicalSearch && (supportedLexFields == null)) {
             throw new SRUClientException("Endpoint must declare " +
                     "all supported lex fields (<SupportedLexFields>) " +
-                    "if they provide the 'lex-search' (" +
-                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    "if they provide the 'lexical-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0 +
                     ") capability");
         }
         if (!hasLexicalSearch && (supportedLexFields != null)) {
             // XXX: hard error?!
             logger.warn("Endpoint superflously declared supported " +
                     "lex fields (<SupportedLexFields> without providing " +
-                    "the 'lex-search' (" +
-                    ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                    "the 'lexical-search' (" +
+                    ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0 +
                     ") capability");
         }
 
@@ -1559,8 +1580,8 @@ public class ClarinFCSEndpointDescriptionParser implements
             if (hasLexicalSearch && (layers == null)) {
                 throw new XMLStreamException("Endpoint must declare " +
                         "all available lex fields (<AvailableLexFields>) " +
-                        "on a resource, if they provide the 'lex-search' (" +
-                        ClarinFCSConstants.CAPABILITY_LEX_SEARCH +
+                        "on a resource, if they provide the 'lexical-search' (" +
+                        ClarinFCSConstants.CAPABILITY_LEXICAL_SEARCH_V1_0 +
                         ") capability. Offending resource id pid=" + pid +
                         ")", reader.getLocation());
             }

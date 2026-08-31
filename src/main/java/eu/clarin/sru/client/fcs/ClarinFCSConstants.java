@@ -101,6 +101,13 @@ public final class ClarinFCSConstants {
 
 
     /**
+     * constant for extra request parameter "x-fcs-lex-fields"
+     */
+    public static final String X_FCS_LEX_FIELDS =
+            "x-fcs-lex-fields";
+
+
+    /**
      * constant for extra request parameter "x-unlimited-resultset" (NB: only
      * applicable for SRUServer implementation)
      */
@@ -114,12 +121,14 @@ public final class ClarinFCSConstants {
     public static final String X_UNLIMITED_TERMLIST =
             SRUClientConstants.X_UNLIMITED_TERMLIST;
 
+
     /**
      * constant for extra request parameter "x-indent-response" (NB: only
      * applicable for SRUServer implementation)
      */
     public static final String X_INDENT_RESPONSE =
             SRUClientConstants.X_INDENT_RESPONSE;
+
 
     private static final String FCS_DIAGNOSTIC_PREFIX =
             "http://clarin.eu/fcs/diagnostic/";
